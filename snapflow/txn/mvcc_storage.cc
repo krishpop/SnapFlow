@@ -57,7 +57,7 @@ void MVCCStorage::Unlock(Key key) {
  * If the txn is not found in the hashmap, recheck the begin_id_active_ flag,
  * proceed accordingly.
  * 
- *
+ * Case 3: 
  */
 
 int GetBeginTimestamp(Version * v) {
@@ -79,19 +79,36 @@ bool MVCCStorage::Read(Key key, Value* result, int txn_unique_id) {
     Version *right_version = NULL;
     for (deque<Version*>::iterator it = data_versions_p->begin();
       it != data_versions_p->end(); ++it) {
-      int begin_ts, end_ts;
-      // Case 1:
-      if (!(*it)->begin_id_active_ && !(*it)->end_id_active_) {
-        // If txn ID is between the begin and end timestamps, this version is
-        // visible to us.
-        if (((*it)->begin_id_ <= txn_unique_id) && ((*it)->end_id_ > txn_unique_id)) {
-            right_version = (*it);
-            break;
+      int begin_ts = -1, end_ts = -1;
+      
+
+      // Case 2:
+      if ((*it)->begin_id_active_) {
+        begin_ts = GetBeginTimestamp(*it);
+        if (!(*it)->end_id_active_) {
+          end_ts = (*it)->end_id_;
+        }
+        else {
+          end_ts = GetEndTimestamp(*it);
         }
       }
-      // Case 2:
-      else if ((*it)->begin_id_active_) {
-        begin_ts = GetBeginTimestamp(*it);
+      else {
+        begin_ts = (*it)->begin_id_;
+        // Case 3:
+        if ((*it)->end_id_active_) {
+          end_ts = GetEndTimestamp(*it);
+        }
+        // Case 1:
+        else {
+          end_ts = (*it)->end_id_;
+        }
+      } 
+      
+
+      // At the end, check using the timestamps found above:
+      if ((begin_ts <= txn_unique_id) && (end_ts > txn_unique_id)) {
+        right_version = (*it);
+        break;
       }
     }
     if (right_version == NULL) {
