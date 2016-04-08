@@ -40,6 +40,30 @@ void MVCCStorage::Unlock(Key key) {
 }
 
 // MVCC Read
+/*Read for SI and SSI is more complex. Only certain versions are visible
+ * to this txn based on its unique_id. 
+ * Case 1: a version's being_id_ and end_id_ are established numbers. 
+ * In this case we check to see if our
+ * txn_unique_id is between those numbers. If it is, then we set result to
+ * that value and return true. Otherwise we continue. (can different versions
+ * have overlapping ranges?)
+ *
+ * Case 2: The begin_id_active_ flag is set to true. In this case, we have
+ * to look up the begin_id_ up in a shared map table of running txns. We see
+ * the status of that transaction. If Active, then that version is not visible
+ * to us. If Preparing, then, we use end_unique_id_ as the begin timestamp and
+ * use that version (specutively) if applicable. If Completed_C we use the
+ * end_unique_id_ as the begin timestamp. If Completed_A, ignore that version.
+ * If the txn is not found in the hashmap, recheck the begin_id_active_ flag,
+ * proceed accordingly.
+ * 
+ *
+ */
+
+int GetBeginTimestamp(Version * v) {
+
+}
+
 bool MVCCStorage::Read(Key key, Value* result, int txn_unique_id) {
   // CPSC 438/538:
   //
@@ -55,24 +79,27 @@ bool MVCCStorage::Read(Key key, Value* result, int txn_unique_id) {
     Version *right_version = NULL;
     for (deque<Version*>::iterator it = data_versions_p->begin();
       it != data_versions_p->end(); ++it) {
-      if (((*it)->version_id_ <= txn_unique_id)) {
-          right_version = (*it);
-          break;
+      int begin_ts, end_ts;
+      // Case 1:
+      if (!(*it)->begin_id_active_ && !(*it)->end_id_active_) {
+        // If txn ID is between the begin and end timestamps, this version is
+        // visible to us.
+        if (((*it)->begin_id_ <= txn_unique_id) && ((*it)->end_id_ > txn_unique_id)) {
+            right_version = (*it);
+            break;
+        }
+      }
+      // Case 2:
+      else if ((*it)->begin_id_active_) {
+        begin_ts = GetBeginTimestamp(*it);
       }
     }
-    
-
     if (right_version == NULL) {
       return false;
     }
     else {
-      if (right_version->max_read_id_ < txn_unique_id) {
-        right_version->max_read_id_ = txn_unique_id;
-      }
       *result = right_version->value_;
-
     }
-
   }
   else {
     return false;

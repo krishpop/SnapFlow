@@ -8,8 +8,12 @@
 // MVCC 'version' structure
 struct Version {
   Value value_;      // The value of this version
-  int max_read_id_;  // Largest timestamp of a transaction that read the version
-  int version_id_;   // Timestamp of the transaction that created(wrote) the version
+  int begin_id_;  // The timestamp of the earliest possible transaction to read/write this version
+  int end_id_;   // Timestamp of the latest possible transaction to read/write this version
+
+  // Flags to check if a txn is currently editing the above fields
+  bool begin_id_active_;
+  bool end_id_active_;
 };
 
 // MVCC storage

@@ -21,6 +21,11 @@ enum TxnStatus {
   COMPLETED_A = 2,  // Executed (with abort vote)
   COMMITTED = 3,    // Committed
   ABORTED = 4,      // Aborted
+
+  // our own added statuses
+  PREPARING = 5,
+  ACTIVE = 6,
+
 };
 
 class Txn {
@@ -101,6 +106,9 @@ class Txn {
 
   // Unique, monotonically increasing transaction ID, assigned by TxnProcessor.
   uint64 unique_id_;
+
+  // Unique, monotonically increasing transaction ID, assigned by TxnProcessor.
+  uint64 end_unique_id_;
 
   // Start time (used for OCC).
   double occ_start_time_;

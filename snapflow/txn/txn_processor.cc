@@ -441,8 +441,7 @@ void TxnProcessor::MVCCExecuteTxn(Txn* txn) {
   // Read all necessary data from storage.
   // Read everything in from readset.
 
-  // Can we remove keys?
-  // What happens if another txn writes a new version after we unlock our
+
   for (set<Key>::iterator it = txn->readset_.begin();
        it != txn->readset_.end(); ++it) {
     // Save each read result iff record exists in storage.
