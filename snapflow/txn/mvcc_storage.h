@@ -12,7 +12,7 @@ struct Version {
   int end_id_;   // Timestamp of the latest possible transaction to read/write this version
 
   // Flags to check if a txn is currently editing the above fields
-  bool begin_id_active_;
+  Txn * begin_id_active_;
   bool end_id_active_;
 };
 
