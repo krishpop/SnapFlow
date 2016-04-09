@@ -4,6 +4,7 @@
 #define _MVCC_STORAGE_H_
 
 #include "txn/storage.h"
+#include "limits.h"
 
 // MVCC 'version' structure
 struct Version {
@@ -15,6 +16,9 @@ struct Version {
   Txn * begin_id_active_;
   bool end_id_active_;
 };
+
+// The upper limit for ints.
+int INF_INT = std::numeric_limits<int>::max();
 
 // MVCC storage
 class MVCCStorage : public Storage {

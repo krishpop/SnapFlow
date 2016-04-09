@@ -57,10 +57,21 @@ void MVCCStorage::Unlock(Key key) {
  * If the txn is not found in the hashmap, recheck the begin_id_active_ flag,
  * proceed accordingly.
  * 
- * Case 3: 
+ * Case 3: The end_id_active_ flag is set to true. In this case, we look at the
+ * status currently operating on the end_id_ of this version. If Active, then
+ * 
  */
 
-int GetBeginTimestamp(Version * v) {
+int GetBeginTimestamp(Version * v, int txn_unique_id) {
+  Txn * t2 = v->begin_id_active_;
+  int status = v->begin_id_active_->GetStatus();
+
+  if (status == ACTIVE) {
+    if (t2 == this_transaction && v->end_id_ == INF_INT) {
+      // v is visible
+      return 
+    }
+  }
 
 }
 
@@ -84,19 +95,20 @@ bool MVCCStorage::Read(Key key, Value* result, int txn_unique_id) {
 
       // Case 2:
       if ((*it)->begin_id_active_) {
-        begin_ts = GetBeginTimestamp(*it);
+        begin_ts = GetBeginTimestamp(*it, txn_unique_id);
         if (!(*it)->end_id_active_) {
           end_ts = (*it)->end_id_;
         }
+        // Case 3:
         else {
-          end_ts = GetEndTimestamp(*it);
+          end_ts = GetEndTimestamp(*it, txn_unique_id);
         }
       }
       else {
         begin_ts = (*it)->begin_id_;
         // Case 3:
         if ((*it)->end_id_active_) {
-          end_ts = GetEndTimestamp(*it);
+          end_ts = GetEndTimestamp(*it, txn_unique_id);
         }
         // Case 1:
         else {
