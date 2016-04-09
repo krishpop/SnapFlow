@@ -519,6 +519,8 @@ void TxnProcessor::RunMVCCScheduler() {
   Txn* txn;
   while (tp_.Active()) {
     if (txn_requests_.Pop(&txn)) {
+      // could be a possible bottleneck?
+      txn_table.AddToTable(txn->unique_id_, txn);
       tp_.RunTask(new Method<TxnProcessor, void, Txn*>(
             this,
             &TxnProcessor::MVCCExecuteTxn,

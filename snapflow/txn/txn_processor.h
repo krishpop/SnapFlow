@@ -10,6 +10,7 @@
 #include <string>
 
 #include "txn/common.h"
+#include "txn/txn_table.h"
 #include "txn/lock_manager.h"
 #include "txn/storage.h"
 #include "txn/mvcc_storage.h"
@@ -60,6 +61,8 @@ class TxnProcessor {
   void RunScheduler();
   
   static void* StartScheduler(void * arg);
+  // A global transaction table
+  TxnTable txn_table;
   
  private:
 
@@ -159,6 +162,8 @@ class TxnProcessor {
 
   // Lock Manager used for LOCKING concurrency implementations.
   LockManager* lm_;
+
+
 };
 
 #endif  // _TXN_PROCESSOR_H_
