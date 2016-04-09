@@ -62,20 +62,42 @@ void MVCCStorage::Unlock(Key key) {
  * 
  */
 
-int GetBeginTimestamp(Version * v, int txn_unique_id) {
-  Txn * t2 = v->begin_id_active_;
-  int status = v->begin_id_active_->GetStatus();
+int MVCCStorage::GetBeginTimestamp(Version * v, int my_id, TxnTable * t) {
+  int id = v->begin_id_active_;
+  if (id <= 0) {
+    //return ? Need to repeat the check
+  }
+  Txn * t2 = t->ReadTable(id);
+  int status = t2->GetStatus();
 
   if (status == ACTIVE) {
-    if (t2 == this_transaction && v->end_id_ == INF_INT) {
+    if (id == my_id && v->end_id_ == INF_INT) {
       // v is visible
-      return 
+      return my_id;
     }
+    else {
+      // v is not visible
+      return INF_INT;
+    }
+  }
+  else if (status == PREPARING) {
+    // This is in speculative mode
+    return t2->GetStartId();
+  }
+  else if (status == COMPLETED_C) {
+    // This is in non-speculative mode
+    return t2->GetStartId();
+  }
+  else if (status == COMPLETED_A || status == ABORTED) {
+    return INF_INT;
+  }
+  else {
+    // the status is INCOMPLETE?
   }
 
 }
 
-bool MVCCStorage::Read(Key key, Value* result, int txn_unique_id) {
+bool MVCCStorage::Read(Key key, Value* result, int txn_unique_id, TxnTable * txn_table) {
   // CPSC 438/538:
   //
   // Implement this method!
@@ -95,20 +117,20 @@ bool MVCCStorage::Read(Key key, Value* result, int txn_unique_id) {
 
       // Case 2:
       if ((*it)->begin_id_active_) {
-        begin_ts = GetBeginTimestamp(*it, txn_unique_id);
+        begin_ts = GetBeginTimestamp(*it, txn_unique_id, txn_table);
         if (!(*it)->end_id_active_) {
           end_ts = (*it)->end_id_;
         }
         // Case 3:
         else {
-          end_ts = GetEndTimestamp(*it, txn_unique_id);
+          end_ts = GetEndTimestamp(*it, txn_unique_id, txn_table);
         }
       }
       else {
         begin_ts = (*it)->begin_id_;
         // Case 3:
         if ((*it)->end_id_active_) {
-          end_ts = GetEndTimestamp(*it, txn_unique_id);
+          end_ts = GetEndTimestamp(*it, txn_unique_id, txn_table);
         }
         // Case 1:
         else {

@@ -41,6 +41,8 @@ class Txn {
   // Returns the Txn's current execution status.
   TxnStatus Status() { return status_; }
 
+  uint64 GetStartId() { return unique_id_; }
+
   // Checks for overlap in read and write sets. If any key appears in both,
   // an error occurs.
   void CheckReadWriteSets();

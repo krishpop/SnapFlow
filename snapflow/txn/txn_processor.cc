@@ -447,7 +447,8 @@ void TxnProcessor::MVCCExecuteTxn(Txn* txn) {
     // Save each read result iff record exists in storage.
     Value result;
     storage_->Lock(*it);
-    if (storage_->Read(*it, &result, txn->unique_id_)) {
+    // We send a pointer to the txn_table
+    if (storage_->Read(*it, &result, txn->unique_id_, &txn_table)) {
       txn->reads_[*it] = result;
     }
     storage_->Unlock(*it);
