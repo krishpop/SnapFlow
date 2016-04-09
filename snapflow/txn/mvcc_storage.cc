@@ -81,7 +81,9 @@ int MVCCStorage::GetBeginTimestamp(Version * v, int my_id, TxnTable * t) {
     }
   }
   else if (status == PREPARING) {
-    // This is in speculative mode
+    // This is in speculative mode. This incurs a dependency
+    t2->CommitDepCount++;
+    t2->CommitDepSet
     return t2->GetStartId();
   }
   else if (status == COMPLETED_C) {
@@ -98,12 +100,6 @@ int MVCCStorage::GetBeginTimestamp(Version * v, int my_id, TxnTable * t) {
 }
 
 bool MVCCStorage::Read(Key key, Value* result, int txn_unique_id, TxnTable * txn_table) {
-  // CPSC 438/538:
-  //
-  // Implement this method!
-  
-  // Hint: Iterate the version_lists and return the verion whose write timestamp
-  // (version_id) is the largest write timestamp less than or equal to txn_unique_id.
 
   if (mvcc_data_.count(key)) {
     deque<Version*> * data_versions_p =  mvcc_data_[key];

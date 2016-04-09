@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "txn/common.h"
+#include "utils/atomic.h"
 
 using std::map;
 using std::set;
@@ -31,7 +32,7 @@ enum TxnStatus {
 class Txn {
  public:
   // Commit vote defauls to false. Only by calling "commit"
-  Txn() : status_(INCOMPLETE) {}
+  Txn() : status_(INCOMPLETE), CommitDepCount(0), AbortNow(false) {}
   virtual ~Txn() {}
   virtual Txn * clone() const = 0;    // Virtual constructor (copying)
 
@@ -46,6 +47,15 @@ class Txn {
   // Checks for overlap in read and write sets. If any key appears in both,
   // an error occurs.
   void CheckReadWriteSets();
+
+  // Counter to count how many dependencies this txn has
+  Atomic<int> CommitDepCount;
+
+  // Atomic Set of txn that depend on this txn.
+  AtomicSet CommitDepSet;
+
+  // Flag that other txns can set to abort this txn.
+  bool AbortNow;
 
  protected:
   // Copies the internals of this txn into a given transaction (i.e.

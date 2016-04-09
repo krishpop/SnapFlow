@@ -3,18 +3,19 @@
 
 #include <map>
 #include "txn/txn.h"
+#include "utils/atomic.h"
 
 class TxnTable {
 	public:
 		TxnTable() {}
 		~TxnTable() {}
-		
+
 		void AddToTable(int, Txn*);
 
 		Txn* ReadTable(int);
 
 	private:
-		unordered_map<int, Txn*> txn_table;
+		AtomicMap<int, Txn*> txn_table;
 };
 
 

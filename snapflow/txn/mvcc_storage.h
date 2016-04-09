@@ -5,7 +5,7 @@
 
 #include "txn/storage.h"
 #include "limits.h"
-#include "txn_table.h"
+#include "txn/txn_table.h"
 
 // MVCC 'version' structure
 struct Version {
@@ -48,6 +48,8 @@ class MVCCStorage : public Storage {
   
   // Check whether apply or abort the write
   virtual bool CheckWrite (Key key, int txn_unique_id);
+
+  int GetBeginTimestamp(Version * v, int my_id, TxnTable * t);
   
   virtual ~MVCCStorage();
 
