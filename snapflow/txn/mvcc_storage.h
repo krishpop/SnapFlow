@@ -13,9 +13,9 @@ struct Version {
   int begin_id_;  // The timestamp of the earliest possible transaction to read/write this version
   int end_id_;   // Timestamp of the latest possible transaction to read/write this version
 
-  // Flags to check if a txn is currently editing the above fields
-  Txn * begin_id_active_;
-  bool end_id_active_;
+  // Txn IDs that are writing the given fields.
+  int begin_id_active_;
+  int end_id_active_;
 };
 
 // The upper limit for ints.

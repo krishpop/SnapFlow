@@ -5,6 +5,8 @@
 #include "txn/txn.h"
 #include "utils/atomic.h"
 
+// This is a table that holds the transactions that
+// have WRITTEN/TRIED TO WRITE to the database.
 class TxnTable {
 	public:
 		TxnTable() {}
