@@ -520,6 +520,10 @@ void TxnProcessor::RunMVCCScheduler() {
   Txn* txn;
   while (tp_.Active()) {
     if (txn_requests_.Pop(&txn)) {
+      // could be a possible bottleneck?
+      // This doesn't work since we don't want to create a global
+      // txn table. Instead we only want to add txns that WRITE
+      // to the database. Thus the above should be in MVCCExecuteTxn.
       tp_.RunTask(new Method<TxnProcessor, void, Txn*>(
             this,
             &TxnProcessor::MVCCExecuteTxn,
