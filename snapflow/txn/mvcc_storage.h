@@ -8,9 +8,15 @@
 
 
 struct TimeStamp {
-  uint64 timestamp;
-  Txn* txn;
-  bool edit_bit;
+  int ts;
+  Txn* current_txn;
+};
+
+// MVCC 'version' structure
+struct Version {
+  Value value_;      // The value of this version
+  TimeStamp begin_id_; // The timestamp of the earliest possible transaction to read/write this version
+  TimeStamp begin_id_; // Timestamp of the latest possible transaction to read/write this version
 };
 
 // MVCC 'version' structure
