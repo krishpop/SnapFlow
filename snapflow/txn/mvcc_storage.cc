@@ -4,7 +4,9 @@
 #include "txn/mvcc_storage.h"
 
 // Init the storage
-void MVCCStorage::InitStorage() {
+void MVCCStorage::InitStorage(TxnTable * t) {
+  // Wrong place for assignment of txn_table
+  txn_table = t;
   for (int i = 0; i < 1000000;i++) {
     Write(i, 0, 0);
     Mutex* key_mutex = new Mutex();
@@ -83,7 +85,7 @@ int MVCCStorage::GetBeginTimestamp(Version * v, int my_id, TxnTable * t) {
   else if (status == PREPARING) {
     // This is in speculative mode. This incurs a dependency
     t2->CommitDepCount++;
-    t2->CommitDepSet
+    t2->CommitDepSet.Insert(this txn address);
     return t2->GetStartId();
   }
   else if (status == COMPLETED_C) {

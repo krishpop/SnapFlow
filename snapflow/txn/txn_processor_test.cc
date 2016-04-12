@@ -7,6 +7,7 @@
 
 #include "txn/txn_types.h"
 #include "utils/testing.h"
+#include "txn/txn_table.h"
 
 // Returns a human-readable string naming of the providing mode.
 string ModeToString(CCMode mode) {
@@ -93,7 +94,10 @@ void Benchmark(const vector<LoadGen*>& lg) {
         int txn_count = 0;
 
         // Create TxnProcessor in next mode.
-        TxnProcessor* p = new TxnProcessor(mode);
+        // Here we can pass a reference to the newly
+        // created TxnTable
+        TxnTable * t = new TxnTable();
+        TxnProcessor* p = new TxnProcessor(mode, t);
 
         // Record start time.
         double start = GetTime();

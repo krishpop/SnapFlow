@@ -52,7 +52,7 @@ class Txn {
   Atomic<int> CommitDepCount;
 
   // Atomic Set of txn that depend on this txn.
-  AtomicSet CommitDepSet;
+  AtomicSet<Txn*> CommitDepSet;
 
   // Flag that other txns can set to abort this txn.
   bool AbortNow;

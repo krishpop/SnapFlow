@@ -12,8 +12,8 @@
 // Thread & queue counts for StaticThreadPool initialization.
 #define THREAD_COUNT 8
 
-TxnProcessor::TxnProcessor(CCMode mode)
-    : mode_(mode), tp_(THREAD_COUNT), next_unique_id_(1) {
+TxnProcessor::TxnProcessor(CCMode mode, TxnTable * t)
+    : mode_(mode), tp_(THREAD_COUNT), next_unique_id_(1), txn_table(t) {
   if (mode_ == LOCKING_EXCLUSIVE_ONLY)
     lm_ = new LockManagerA(&ready_txns_);
   else if (mode_ == LOCKING)
@@ -21,7 +21,7 @@ TxnProcessor::TxnProcessor(CCMode mode)
   
   // Create the storage
   if (mode_ == MVCC) {
-    storage_ = new MVCCStorage();
+    storage_ = new MVCCStorage(t);
   } else {
     storage_ = new Storage();
   }
@@ -448,7 +448,7 @@ void TxnProcessor::MVCCExecuteTxn(Txn* txn) {
     Value result;
     storage_->Lock(*it);
     // We send a pointer to the txn_table
-    if (storage_->Read(*it, &result, txn->unique_id_, &txn_table)) {
+    if (storage_->Read(*it, &result, txn->unique_id_, &txn_table, txn)) {
       txn->reads_[*it] = result;
     }
     storage_->Unlock(*it);

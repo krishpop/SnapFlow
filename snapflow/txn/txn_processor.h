@@ -37,7 +37,7 @@ enum CCMode {
 };
 
 // Returns a human-readable string naming of the providing mode.
-string ModeToString(CCMode mode);
+string ModeToString(CCMode mode, TxnTable * t);
 
 class TxnProcessor {
  public:
@@ -61,8 +61,9 @@ class TxnProcessor {
   void RunScheduler();
   
   static void* StartScheduler(void * arg);
-  // A global transaction table
-  TxnTable txn_table;
+  // An instance transaction table of txns that have WRITTEN/TRIED TO WRITE
+  // to the database
+  TxnTable * txn_table;
   
  private:
 
