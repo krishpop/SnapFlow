@@ -7,15 +7,17 @@
 #include "limits.h"
 #include "txn/txn_table.h"
 
+
+struct TimeStamp {
+  int ts;
+  Txn* current_txn;
+};
+
 // MVCC 'version' structure
 struct Version {
   Value value_;      // The value of this version
-  int begin_id_;  // The timestamp of the earliest possible transaction to read/write this version
-  int end_id_;   // Timestamp of the latest possible transaction to read/write this version
-
-  // Txn IDs that are writing the given fields.
-  int begin_id_active_;
-  int end_id_active_;
+  TimeStamp begin_id_; // The timestamp of the earliest possible transaction to read/write this version
+  TimeStamp begin_id_; // Timestamp of the latest possible transaction to read/write this version
 };
 
 struct SpeculativeTS {
@@ -42,21 +44,21 @@ class MVCCStorage : public Storage {
   // Returns the timestamp at which the record with the specified key was last
   // updated (returns 0 if the record has never been updated). This is used for OCC.
   virtual double Timestamp(Key key) {return 0;}
-  
+
   // Init storage
   virtual void InitStorage();
-  
+
   // Lock the version_list of key
   virtual void Lock(Key key);
-  
+
   // Unlock the version_list of key
   virtual void Unlock(Key key);
-  
+
   // Check whether apply or abort the write
   virtual bool CheckWrite (Key key, int txn_unique_id);
 
-  SpeculativeTS MVCCStorage::GetBeginTimestamp(Version * v, int my_id);
-  
+  int GetBeginTimestamp(Version * v, int my_id, TxnTable * t);
+
   virtual ~MVCCStorage();
 
  private:
@@ -65,12 +67,11 @@ class MVCCStorage : public Storage {
 
   void MVCCStorage::InitTS(SpeculativeTS & ts)
 
- 
   friend class TxnProcessor;
-  
+
   // Storage for MVCC, each key has a linklist of versions
   unordered_map<Key, deque<Version*>*> mvcc_data_;
-  
+
   // Mutexs for each key
   unordered_map<Key, Mutex*> mutexs_;
 
