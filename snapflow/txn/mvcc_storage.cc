@@ -127,6 +127,7 @@ SpeculativeTS MVCCStorage::GetEndTimestamp(Version * v, int my_id) {
   if (id <= 0) {
     //return ? Need to repeat the check
   }
+  
   // Or we should have the Table return the status itself.
   Txn * t2 = txn_table->ReadTable(id);
   // Must check for t2 being NULL
