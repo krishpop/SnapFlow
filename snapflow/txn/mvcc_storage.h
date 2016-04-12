@@ -18,6 +18,12 @@ struct Version {
   int end_id_active_;
 };
 
+struct SpeculativeTS {
+  int timestamp;
+  bool speculative_mode;
+  Txn * dependency;
+};
+
 // The upper limit for ints.
 int INF_INT = std::numeric_limits<int>::max();
 
@@ -49,11 +55,16 @@ class MVCCStorage : public Storage {
   // Check whether apply or abort the write
   virtual bool CheckWrite (Key key, int txn_unique_id);
 
-  int GetBeginTimestamp(Version * v, int my_id, TxnTable * t);
+  SpeculativeTS MVCCStorage::GetBeginTimestamp(Version * v, int my_id);
   
   virtual ~MVCCStorage();
 
  private:
+
+  void MVCCStorage::SetTs(SpeculativeTS & ts, int t, bool mode);
+
+  void MVCCStorage::InitTS(SpeculativeTS & ts)
+
  
   friend class TxnProcessor;
   
