@@ -120,6 +120,7 @@ SpeculativeTS MVCCStorage::GetBeginTimestamp(Version * v, int my_id) {
 
 }
 
+// Need to finish this
 // It must be that t2 has already been added to txn_table
 SpeculativeTS MVCCStorage::GetEndTimestamp(Version * v, int my_id) {
   SpeculativeTS ts;
@@ -127,7 +128,7 @@ SpeculativeTS MVCCStorage::GetEndTimestamp(Version * v, int my_id) {
   if (id <= 0) {
     //return ? Need to repeat the check
   }
-  
+
   // Or we should have the Table return the status itself.
   Txn * t2 = txn_table->ReadTable(id);
   // Must check for t2 being NULL
