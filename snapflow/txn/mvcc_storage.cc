@@ -94,6 +94,7 @@ SpeculativeTS MVCCStorage::GetBeginTimestamp(Version * v, int my_id) {
       return ts;
     }
   }
+  // Since we're doing SI, we don't have to do this branch
   else if (status == PREPARING) {
     // This is in speculative mode. This incurs a dependency
     spec_mode = true;
