@@ -68,6 +68,18 @@ void MVCCStorage::SetTs(TimeStamp & ts, int t, bool mode, Txn * t2) {
   ts.dependency = t2;
 }
 
+// It must be that t2 has already been added to txn_table
+int MVCCStorage::GetBeginTimestamp(Version * v, int my_id) {
+  int ts;
+  int id = v->begin_id_active_;
+  if (id <= 0) {
+    //return ? Need to repeat the check
+  }
+  // Or we should have the Table return the status itself.
+
+  Txn * t2 = txn_table->ReadTable(id);
+  // Must check for t2 being NULL
+  int status = t2->GetStatus();
 
 uint64 MVCCStorage::GetBeginTimestamp(Version * v, int my_id, TimeStamp & ts) {
   // What if ts.txn has committed and replaced itself?
@@ -133,7 +145,6 @@ uint64 MVCCStorage::GetEndTimestamp(Version * v, int my_id, TimeStamp & ts) {
 }
 
 
-
 void MVCCStorage::InitTS(TimeStamp ts) {
   ts.timestamp = -1;
   ts.txn = NULL;
@@ -144,11 +155,14 @@ bool MVCCStorage::Read(Key key, Value* result, int txn_unique_id) {
 
   if (mvcc_data_.count(key)) {
     deque<Version*> * data_versions_p =  mvcc_data_[key];
-    uint64 begin_ts, end_ts;
+    TimeStamp begin_ts, end_ts;
     // This works under the assumption that we have the deque sorted in decreasing order
     Version *right_version = NULL;
     for (deque<Version*>::iterator it = data_versions_p->begin();
       it != data_versions_p->end(); ++it) {
+
+      InitTS(begin_ts);
+      InitTS(end_ts);
 
       // Case 2:
       if ((*it)->begin_id_.edit_bit) {
@@ -173,7 +187,6 @@ bool MVCCStorage::Read(Key key, Value* result, int txn_unique_id) {
         }
       }
 
-      
       // At the end, check using the timestamps found above:
       if ((begin_ts <= txn_unique_id) && (end_ts > txn_unique_id)) {
         right_version = (*it);
@@ -186,7 +199,7 @@ bool MVCCStorage::Read(Key key, Value* result, int txn_unique_id) {
     else {
       *result = right_version->value_;
     }
-  }
+}
   else {
     return false;
   }

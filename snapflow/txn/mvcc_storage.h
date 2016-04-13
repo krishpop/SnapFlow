@@ -8,8 +8,8 @@
 
 
 struct TimeStamp {
-  int ts;
-  Txn* current_txn;
+  int timestamp;
+  Txn* t;
 };
 
 // MVCC 'version' structure
@@ -59,7 +59,7 @@ class MVCCStorage : public Storage {
 
   int GetBeginTimestamp(Version * v, int my_id, TxnTable * t);
 
-  int GetEndTimestamp(Version * v, int my_id);
+  int MVCCStorage::GetEndTimestamp(Version * v, int my_id);
 
   virtual ~MVCCStorage();
 
