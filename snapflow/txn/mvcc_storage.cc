@@ -144,7 +144,6 @@ uint64 MVCCStorage::GetEndTimestamp(Version * v, int my_id, TimeStamp & ts) {
 
 }
 
-
 void MVCCStorage::InitTS(TimeStamp ts) {
   ts.timestamp = -1;
   ts.txn = NULL;
