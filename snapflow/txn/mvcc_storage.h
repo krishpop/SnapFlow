@@ -9,7 +9,8 @@
 
 struct TimeStamp {
   int timestamp;
-  Txn* t;
+  Txn* txn;
+  bool edit_bit;
 };
 
 // MVCC 'version' structure

@@ -64,46 +64,33 @@ void MVCCStorage::Unlock(Key key) {
  *
  */
 
-void MVCCStorage::SetTs(int & ts, int t, bool mode, Txn * t2) {
+void MVCCStorage::SetTs(TimeStamp & ts, int t, bool mode, Txn * t2) {
   ts.timestamp = t;
   ts.speculative_mode = mode;
   ts.dependency = t2;
 }
 
 // It must be that t2 has already been added to txn_table
-int MVCCStorage::GetBeginTimestamp(Version * v, int my_id) {
-  int ts;
-  int id = v->begin_id_active_;
-  if (id <= 0) {
-    //return ? Need to repeat the check
-  }
-  // Or we should have the Table return the status itself.
+int MVCCStorage::GetBeginTimestamp(Version * v, int my_id, TimeStamp & ts) {
+  TimeStamp new_ts;
+  // What if ts.txn has committed and replaced itself?
+  int status = ts.txn->GetStatus();
+  int id = ts.txn->GetStartID();
 
-  Txn * t2 = txn_table->ReadTable(id);
-  // Must check for t2 being NULL
-  int status = t2->GetStatus();
-
-
-  bool spec_mode = false;
   if (status == ACTIVE) {
-    if (id == my_id && v->end_id_ == INF_INT) {
+    if (id == my_id && v->end_id_.timestamp == INF_INT) {
       // v is visible
-      SetTs(ts, my_id, spec_mode, t2);
-      return ts;
+      return my_id;
     }
     else {
       // v is not visible
-      SetTs(ts, INF_INT, spec_mode, t2);
-      return ts;
+      return INF_INT;
     }
   }
   else if (status == PREPARING) {
-    // This is in speculative mode. This incurs a dependency
-    spec_mode = true;
     // We return the END ID since once we are in Preparing mode, we have already
     // acquired an END ID.
-    SetTs(ts, t2->GetEndID(), spec_mode, t2);
-    return ts;
+    return ts.txn->GetEndID();
   }
   else if (status == COMPLETED_C) {
     // This is in non-speculative mode
@@ -141,10 +128,10 @@ bool MVCCStorage::Read(Key key, Value* result, int txn_unique_id, Txn * this_txn
 
 
       // Case 2:
-      if ((*it)->begin_id_active_) {
-        begin_ts = GetBeginTimestamp(*it, txn_unique_id);
-        if (!(*it)->end_id_active_) {
-          end_ts = (*it)->end_id_;
+      if ((*it)->begin_id_.edit_bit) {
+        begin_ts = GetBeginTimestamp(*it, txn_unique_id, (*it)->begin_id_);
+        if (!(*it)->end_id_.edit_bit) {
+          end_ts = (*it)->end_id_.timestamp;
         }
         // Case 3:
         else {
@@ -152,14 +139,14 @@ bool MVCCStorage::Read(Key key, Value* result, int txn_unique_id, Txn * this_txn
         }
       }
       else {
-        begin_ts = (*it)->begin_id_;
+        begin_ts = (*it)->begin_id_.timestamp;
         // Case 3:
-        if ((*it)->end_id_active_) {
+        if ((*it)->end_id_.edit_bit) {
           end_ts = GetEndTimestamp(*it, txn_unique_id);
         }
         // Case 1:
         else {
-          end_ts = (*it)->end_id_;
+          end_ts = (*it)->end_id_.timestamp;
         }
       }
 
@@ -187,11 +174,12 @@ bool MVCCStorage::Read(Key key, Value* result, int txn_unique_id, Txn * this_txn
       *result = right_version->value_;
     }
     */
-}
+  }
   else {
     return false;
   }
   return true;
+  }
 }
 
 
