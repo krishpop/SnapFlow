@@ -18,20 +18,20 @@ void MVCCStorage::InitStorage(TxnTable * t) {
 MVCCStorage::~MVCCStorage() {
   for (unordered_map<Key, deque<Version*>*>::iterator it = mvcc_data_.begin();
        it != mvcc_data_.end(); ++it) {
-    delete it->second;          
+    delete it->second;
   }
-  
+
   mvcc_data_.clear();
-  
+
   for (unordered_map<Key, Mutex*>::iterator it = mutexs_.begin();
        it != mutexs_.end(); ++it) {
-    delete it->second;          
+    delete it->second;
   }
-  
+
   mutexs_.clear();
 }
 
-// Lock the key to protect its version_list. Remember to lock the key when you read/update the version_list 
+// Lock the key to protect its version_list. Remember to lock the key when you read/update the version_list
 void MVCCStorage::Lock(Key key) {
   mutexs_[key]->Lock();
 }
@@ -43,8 +43,8 @@ void MVCCStorage::Unlock(Key key) {
 
 // MVCC Read
 /*Read for SI and SSI is more complex. Only certain versions are visible
- * to this txn based on its unique_id. 
- * Case 1: a version's being_id_ and end_id_ are established numbers. 
+ * to this txn based on its unique_id.
+ * Case 1: a version's being_id_ and end_id_ are established numbers.
  * In this case we check to see if our
  * txn_unique_id is between those numbers. If it is, then we set result to
  * that value and return true. Otherwise we continue. (can different versions
@@ -58,21 +58,21 @@ void MVCCStorage::Unlock(Key key) {
  * end_unique_id_ as the begin timestamp. If Completed_A, ignore that version.
  * If the txn is not found in the hashmap, recheck the begin_id_active_ flag,
  * proceed accordingly.
- * 
+ *
  * Case 3: The end_id_active_ flag is set to true. In this case, we look at the
  * status currently operating on the end_id_ of this version. If Active, then
- * 
+ *
  */
 
-void MVCCStorage::SetTs(SpeculativeTS & ts, int t, bool mode, Txn * t2) {
+void MVCCStorage::SetTs(int & ts, int t, bool mode, Txn * t2) {
   ts.timestamp = t;
   ts.speculative_mode = mode;
   ts.dependency = t2;
 }
 
 // It must be that t2 has already been added to txn_table
-SpeculativeTS MVCCStorage::GetBeginTimestamp(Version * v, int my_id) {
-  SpeculativeTS ts;
+int MVCCStorage::GetBeginTimestamp(Version * v, int my_id) {
+  int ts;
   int id = v->begin_id_active_;
   if (id <= 0) {
     //return ? Need to repeat the check
@@ -121,13 +121,13 @@ SpeculativeTS MVCCStorage::GetBeginTimestamp(Version * v, int my_id) {
 }
 
 // It must be that t2 has already been added to txn_table
-SpeculativeTS MVCCStorage::GetEndTimestamp(Version * v, int my_id) {
-  SpeculativeTS ts;
+int MVCCStorage::GetEndTimestamp(Version * v, int my_id) {
+  int ts;
   int id = v->begin_id_active_;
   if (id <= 0) {
     //return ? Need to repeat the check
   }
-  
+
   // Or we should have the Table return the status itself.
   Txn * t2 = txn_table->ReadTable(id);
   // Must check for t2 being NULL
@@ -170,16 +170,16 @@ SpeculativeTS MVCCStorage::GetEndTimestamp(Version * v, int my_id) {
 
 }
 
-void MVCCStorage::InitTS(SpeculativeTS & ts) {
+void MVCCStorage::InitTS(TimeStamp ts) {
   ts.timestamp = -1;
-  ts.speculative_mode = false;
+  ts.t = NULL;
 }
 
 bool MVCCStorage::Read(Key key, Value* result, int txn_unique_id, Txn * this_txn) {
 
   if (mvcc_data_.count(key)) {
     deque<Version*> * data_versions_p =  mvcc_data_[key];
-    SepculativeTS begin_ts, end_ts;
+    TimeStamp begin_ts, end_ts;
     // This works under the assumption that we have the deque sorted in decreasing order
     Version *right_version = NULL;
     for (deque<Version*>::iterator it = data_versions_p->begin();
@@ -187,7 +187,7 @@ bool MVCCStorage::Read(Key key, Value* result, int txn_unique_id, Txn * this_txn
 
       InitTS(begin_ts);
       InitTS(end_ts);
-      
+
 
       // Case 2:
       if ((*it)->begin_id_active_) {
@@ -210,9 +210,9 @@ bool MVCCStorage::Read(Key key, Value* result, int txn_unique_id, Txn * this_txn
         else {
           end_ts = (*it)->end_id_;
         }
-      } 
-      
+      }
 
+      /*
       // At the end, check using the timestamps found above:
       if ((begin_ts.timestamp <= txn_unique_id) && (end_ts.timestamp > txn_unique_id)) {
         // We acquired a dependency
@@ -235,7 +235,8 @@ bool MVCCStorage::Read(Key key, Value* result, int txn_unique_id, Txn * this_txn
     else {
       *result = right_version->value_;
     }
-  }
+    */
+}
   else {
     return false;
   }
@@ -248,14 +249,14 @@ bool MVCCStorage::CheckWrite(Key key, int txn_unique_id) {
   // CPSC 438/538:
   //
   // Implement this method!
-  
+
   // Hint: Before all writes are applied, we need to make sure that each write
   // can be safely applied based on MVCC timestamp ordering protocol. This method
   // only checks one key, so you should call this method for each key in the
-  // write_set. Return true if this key passes the check, return false if not. 
+  // write_set. Return true if this key passes the check, return false if not.
   // Note that you don't have to call Lock(key) in this method, just
   // call Lock(key) before you call this method and call Unlock(key) afterward.
-  
+
   if (mvcc_data_.count(key)) {
     // Obtain the most recent version before txn_unique_id
     deque<Version*> * data_versions_p =  mvcc_data_[key];
@@ -273,7 +274,7 @@ bool MVCCStorage::CheckWrite(Key key, int txn_unique_id) {
           return false;
         }
       }
-        
+
     }
     if (most_recent_version->max_read_id_ > txn_unique_id) {
       return false;
@@ -289,9 +290,9 @@ void MVCCStorage::Write(Key key, Value value, int txn_unique_id) {
   // CPSC 438/538:
   //
   // Implement this method!
-  
+
   // Hint: Insert a new version (malloc a Version and specify its value/version_id/max_read_id)
-  // into the version_lists. Note that InitStorage() also calls this method to init storage. 
+  // into the version_lists. Note that InitStorage() also calls this method to init storage.
   // Note that you don't have to call Lock(key) in this method, just
   // call Lock(key) before you call this method and call Unlock(key) afterward.
   Version * to_insert = new Version{ value, 0, txn_unique_id };
@@ -316,9 +317,4 @@ void MVCCStorage::Write(Key key, Value value, int txn_unique_id) {
     data_p->push_back(to_insert);
   }
 
-
-  
-  
 }
-
-

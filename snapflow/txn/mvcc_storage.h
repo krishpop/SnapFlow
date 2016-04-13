@@ -9,8 +9,8 @@
 
 
 struct TimeStamp {
-  int ts;
-  Txn* current_txn;
+  int timestamp;
+  Txn* t;
 };
 
 // MVCC 'version' structure
@@ -18,12 +18,6 @@ struct Version {
   Value value_;      // The value of this version
   TimeStamp begin_id_; // The timestamp of the earliest possible transaction to read/write this version
   TimeStamp begin_id_; // Timestamp of the latest possible transaction to read/write this version
-};
-
-struct SpeculativeTS {
-  int timestamp;
-  bool speculative_mode;
-  Txn * dependency;
 };
 
 // The upper limit for ints.
@@ -58,6 +52,8 @@ class MVCCStorage : public Storage {
   virtual bool CheckWrite (Key key, int txn_unique_id);
 
   int GetBeginTimestamp(Version * v, int my_id, TxnTable * t);
+
+  int MVCCStorage::GetEndTimestamp(Version * v, int my_id);
 
   virtual ~MVCCStorage();
 
