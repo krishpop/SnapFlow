@@ -5,7 +5,6 @@
 
 #include "txn/storage.h"
 #include "limits.h"
-#include "txn/txn_table.h"
 
 
 struct TimeStamp {
@@ -71,8 +70,6 @@ class MVCCStorage : public Storage {
   // Mutexs for each key
   unordered_map<Key, Mutex*> mutexs_;
 
-  // A pointer to the singleton TxnTable
-  TxnTable * txn_table;
 };
 
 #endif  // _MVCC_STORAGE_H_

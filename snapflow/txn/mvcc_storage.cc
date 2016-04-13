@@ -120,55 +120,6 @@ int MVCCStorage::GetBeginTimestamp(Version * v, int my_id) {
 
 }
 
-// It must be that t2 has already been added to txn_table
-int MVCCStorage::GetEndTimestamp(Version * v, int my_id) {
-  int ts;
-  int id = v->begin_id_active_;
-  if (id <= 0) {
-    //return ? Need to repeat the check
-  }
-
-  // Or we should have the Table return the status itself.
-  Txn * t2 = txn_table->ReadTable(id);
-  // Must check for t2 being NULL
-  int status = t2->GetStatus();
-
-
-  bool spec_mode = false;
-  if (status == ACTIVE) {
-    if (id == my_id && v->end_id_ == INF_INT) {
-      // v is visible
-      SetTs(ts, my_id, spec_mode, t2);
-      return ts;
-    }
-    else {
-      // v is not visible
-      SetTs(ts, INF_INT, spec_mode, t2);
-      return ts;
-    }
-  }
-  else if (status == PREPARING) {
-    // This is in speculative mode. This incurs a dependency
-    spec_mode = true;
-    // We return the END ID since once we are in Preparing mode, we have already
-    // acquired an END ID.
-    SetTs(ts, t2->GetEndID(), spec_mode, t2);
-    return ts;
-  }
-  else if (status == COMPLETED_C) {
-    // This is in non-speculative mode
-    SetTs(ts, t2->GetEndID(), spec_mode, t2);
-    return ts;
-  }
-  else if (status == COMPLETED_A || status == ABORTED) {
-    SetTs(ts, INF_INT, spec_mode, t2);
-    return ts;
-  }
-  else {
-    // the status is INCOMPLETE?
-  }
-
-}
 
 void MVCCStorage::InitTS(TimeStamp ts) {
   ts.timestamp = -1;

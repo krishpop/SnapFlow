@@ -10,7 +10,6 @@
 #include <string>
 
 #include "txn/common.h"
-#include "txn/txn_table.h"
 #include "txn/lock_manager.h"
 #include "txn/storage.h"
 #include "txn/mvcc_storage.h"
@@ -61,9 +60,6 @@ class TxnProcessor {
   void RunScheduler();
   
   static void* StartScheduler(void * arg);
-  // An instance transaction table of txns that have WRITTEN/TRIED TO WRITE
-  // to the database
-  TxnTable * txn_table;
   
  private:
 
