@@ -4,9 +4,7 @@
 #include "txn/mvcc_storage.h"
 
 // Init the storage
-void MVCCStorage::InitStorage(TxnTable * t) {
-  // Wrong place for assignment of txn_table
-  txn_table = t;
+void MVCCStorage::InitStorage() {
   for (int i = 0; i < 1000000;i++) {
     Write(i, 0, 0);
     Mutex* key_mutex = new Mutex();
@@ -70,7 +68,6 @@ void MVCCStorage::SetTs(SpeculativeTS & ts, int t, bool mode, Txn * t2) {
   ts.dependency = t2;
 }
 
-// It must be that t2 has already been added to txn_table
 SpeculativeTS MVCCStorage::GetBeginTimestamp(Version * v, int my_id) {
   SpeculativeTS ts;
   int id = v->begin_id_active_;
@@ -120,56 +117,7 @@ SpeculativeTS MVCCStorage::GetBeginTimestamp(Version * v, int my_id) {
 
 }
 
-// Need to finish this
-// It must be that t2 has already been added to txn_table
-SpeculativeTS MVCCStorage::GetEndTimestamp(Version * v, int my_id) {
-  SpeculativeTS ts;
-  int id = v->begin_id_active_;
-  if (id <= 0) {
-    //return ? Need to repeat the check
-  }
 
-  // Or we should have the Table return the status itself.
-  Txn * t2 = txn_table->ReadTable(id);
-  // Must check for t2 being NULL
-  int status = t2->GetStatus();
-
-
-  bool spec_mode = false;
-  if (status == ACTIVE) {
-    if (id == my_id && v->end_id_ == INF_INT) {
-      // v is visible
-      SetTs(ts, my_id, spec_mode, t2);
-      return ts;
-    }
-    else {
-      // v is not visible
-      SetTs(ts, INF_INT, spec_mode, t2);
-      return ts;
-    }
-  }
-  else if (status == PREPARING) {
-    // This is in speculative mode. This incurs a dependency
-    spec_mode = true;
-    // We return the END ID since once we are in Preparing mode, we have already
-    // acquired an END ID.
-    SetTs(ts, t2->GetEndID(), spec_mode, t2);
-    return ts;
-  }
-  else if (status == COMPLETED_C) {
-    // This is in non-speculative mode
-    SetTs(ts, t2->GetEndID(), spec_mode, t2);
-    return ts;
-  }
-  else if (status == COMPLETED_A || status == ABORTED) {
-    SetTs(ts, INF_INT, spec_mode, t2);
-    return ts;
-  }
-  else {
-    // the status is INCOMPLETE?
-  }
-
-}
 
 void MVCCStorage::InitTS(SpeculativeTS & ts) {
   ts.timestamp = -1;

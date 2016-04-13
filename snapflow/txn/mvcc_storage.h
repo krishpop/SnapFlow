@@ -5,7 +5,6 @@
 
 #include "txn/storage.h"
 #include "limits.h"
-#include "txn/txn_table.h"
 
 // MVCC 'version' structure
 struct Version {
@@ -33,7 +32,7 @@ class MVCCStorage : public Storage {
   // If there exists a record for the specified key, sets '*result' equal to
   // the value associated with the key and returns true, else returns false;
   // The third parameter is the txn_unique_id(txn timestamp), which is used for MVCC.
-  virtual bool Read(Key key, Value* result, int txn_unique_id = 0, TxnTable * txn_table);
+  virtual bool Read(Key key, Value* result, int txn_unique_id = 0);
 
   // Inserts a new version with key and value
   // The third parameter is the txn_unique_id(txn timestamp), which is used for MVCC.
@@ -74,8 +73,6 @@ class MVCCStorage : public Storage {
   // Mutexs for each key
   unordered_map<Key, Mutex*> mutexs_;
 
-  // A pointer to the singleton TxnTable
-  TxnTable * txn_table;
 };
 
 #endif  // _MVCC_STORAGE_H_

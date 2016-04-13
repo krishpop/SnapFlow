@@ -12,8 +12,8 @@
 // Thread & queue counts for StaticThreadPool initialization.
 #define THREAD_COUNT 8
 
-TxnProcessor::TxnProcessor(CCMode mode, TxnTable * t)
-    : mode_(mode), tp_(THREAD_COUNT), next_unique_id_(1), txn_table(t) {
+TxnProcessor::TxnProcessor(CCMode mode)
+    : mode_(mode), tp_(THREAD_COUNT), next_unique_id_(1) {
   if (mode_ == LOCKING_EXCLUSIVE_ONLY)
     lm_ = new LockManagerA(&ready_txns_);
   else if (mode_ == LOCKING)
@@ -21,7 +21,7 @@ TxnProcessor::TxnProcessor(CCMode mode, TxnTable * t)
   
   // Create the storage
   if (mode_ == MVCC) {
-    storage_ = new MVCCStorage(t);
+    storage_ = new MVCCStorage();
   } else {
     storage_ = new Storage();
   }
@@ -447,8 +447,8 @@ void TxnProcessor::MVCCExecuteTxn(Txn* txn) {
     // Save each read result iff record exists in storage.
     Value result;
     storage_->Lock(*it);
-    // We send a pointer to the txn_table
-    if (storage_->Read(*it, &result, txn->unique_id_, &txn_table, txn)) {
+
+    if (storage_->Read(*it, &result, txn->unique_id_, txn)) {
       txn->reads_[*it] = result;
     }
     storage_->Unlock(*it);
@@ -520,11 +520,7 @@ void TxnProcessor::RunMVCCScheduler() {
   Txn* txn;
   while (tp_.Active()) {
     if (txn_requests_.Pop(&txn)) {
-      // could be a possible bottleneck?
-      //txn_table.AddToTable(txn->unique_id_, txn);
-      // This doesn't work since we don't want to create a global
-      // txn table. Instead we only want to add txns that WRITE
-      // to the database. Thus the above should be in MVCCExecuteTxn.
+
       tp_.RunTask(new Method<TxnProcessor, void, Txn*>(
             this,
             &TxnProcessor::MVCCExecuteTxn,
