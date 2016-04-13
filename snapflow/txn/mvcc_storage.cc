@@ -69,24 +69,21 @@ void MVCCStorage::SetTs(TimeStamp & ts, int t, bool mode, Txn * t2) {
 }
 
 // It must be that t2 has already been added to txn_table
-int MVCCStorage::GetBeginTimestamp(Version * v, int my_id) {
-  int ts;
-  int id = v->begin_id_active_;
-  if (id <= 0) {
-    //return ? Need to repeat the check
-  }
-  // Or we should have the Table return the status itself.
+int MVCCStorage::GetBeginTimestamp(Version * v, int my_id, TimeStamp & ts) {
+  TimeStamp new_ts;
+  // What if ts.txn has committed and replaced itself?
+  int status = ts.txn->GetStatus();
+  int id = ts.txn->GetStartID();
 
-  Txn * t2 = txn_table->ReadTable(id);
-  // Must check for t2 being NULL
-  int status = t2->GetStatus();
-
+<<<<<<< bccf669603b83464e48eb1247bf436ad97095923
 uint64 MVCCStorage::GetBeginTimestamp(Version * v, int my_id, TimeStamp & ts) {
   // What if ts.txn has committed and replaced itself?
   // This requires that the txn keeps its pointer in the Txn field of the TS
   int status = ts.txn->GetStatus();
   uint64 id = ts.txn->GetStartID();
 
+=======
+>>>>>>> added the final bit flag for TS struct
   if (status == ACTIVE) {
     if (id == my_id && v->end_id_.timestamp == INF_INT) {
       // v is visible
@@ -198,11 +195,12 @@ bool MVCCStorage::Read(Key key, Value* result, int txn_unique_id) {
     else {
       *result = right_version->value_;
     }
-}
+  }
   else {
     return false;
   }
   return true;
+  }
 }
 
 
