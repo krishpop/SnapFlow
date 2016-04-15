@@ -62,12 +62,6 @@ void MVCCStorage::Unlock(Key key) {
  *
  */
 
-void MVCCStorage::SetTs(TimeStamp & ts, int t, bool mode, Txn * t2) {
-  ts.timestamp = t;
-  ts.speculative_mode = mode;
-  ts.dependency = t2;
-}
-
 // It must be that t2 has already been added to txn_table
 int MVCCStorage::GetBeginTimestamp(Version * v, int my_id, TimeStamp & ts) {
   TimeStamp new_ts;
@@ -203,7 +197,6 @@ bool MVCCStorage::Read(Key key, Value* result, int txn_unique_id) {
   }
 }
 
-
 // Check whether apply or abort the write
 bool MVCCStorage::CheckWrite(Key key, int txn_unique_id) {
   // CPSC 438/538:
@@ -247,14 +240,10 @@ bool MVCCStorage::CheckWrite(Key key, int txn_unique_id) {
 
 // MVCC Write, call this method only if CheckWrite return true.
 void MVCCStorage::Write(Key key, Value value, int txn_unique_id) {
-  // CPSC 438/538:
-  //
-  // Implement this method!
+  TimeStamp end_ts, begin_ts; // end_ts gets inserted into latest version, begin_ts into the new version
+  InitTS(end_ts);
+  InitTS(begin_ts);
 
-  // Hint: Insert a new version (malloc a Version and specify its value/version_id/max_read_id)
-  // into the version_lists. Note that InitStorage() also calls this method to init storage.
-  // Note that you don't have to call Lock(key) in this method, just
-  // call Lock(key) before you call this method and call Unlock(key) afterward.
   Version * to_insert = new Version{ value, 0, txn_unique_id };
 
   if (!mvcc_data_.count(key)) {
