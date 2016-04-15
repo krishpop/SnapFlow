@@ -17,7 +17,7 @@ struct TimeStamp {
 struct Version {
   Value value_;      // The value of this version
   TimeStamp begin_id_; // The timestamp of the earliest possible transaction to read/write this version
-  TimeStamp begin_id_; // Timestamp of the latest possible transaction to read/write this version
+  TimeStamp end_id_; // Timestamp of the latest possible transaction to read/write this version
 };
 
 // The upper limit for ints.
@@ -53,7 +53,7 @@ class MVCCStorage : public Storage {
 
   int GetBeginTimestamp(Version * v, int my_id, TxnTable * t);
 
-  int MVCCStorage::GetEndTimestamp(Version * v, int my_id);
+  int GetEndTimestamp(Version * v, int my_id);
 
   virtual ~MVCCStorage();
 

@@ -73,7 +73,7 @@ uint64 MVCCStorage::GetBeginTimestamp(Version * v, int my_id, TimeStamp & ts) {
   // What if ts.txn has committed and replaced itself?
   // This requires that the txn keeps its pointer in the Txn field of the TS
   int status = ts.txn->GetStatus();
-  int id = ts.txn->GetStartID();
+  uint64 id = ts.txn->GetStartID();
 
   if (status == ACTIVE) {
     if (id == my_id && v->end_id_.timestamp == INF_INT) {
@@ -91,6 +91,35 @@ uint64 MVCCStorage::GetBeginTimestamp(Version * v, int my_id, TimeStamp & ts) {
     // acquired an END ID.
     return ts.txn->GetEndID();
   }
+  // We could change the return depending on when the TS is "propagated".
+  else if (status == COMPLETED_C) {
+    return ts.txn->GetEndID();
+  }
+  else if (status == COMPLETED_A || status == ABORTED) {
+    return INF_INT;
+  }
+  else {
+    // the status is INCOMPLETE?
+  }
+
+}
+
+uint64 MVCCStorage::GetEndTimestamp(Version * v, int my_id, TimeStamp & ts) {
+  // What if ts.txn has committed and replaced itself?
+  // This requires that the txn keeps its pointer in the Txn field of the TS
+  int status = ts.txn->GetStatus();
+  uint64 id = ts.txn->GetStartID();
+
+  if (status == ACTIVE) {
+      return INF_INT;
+  }
+  // Since we're doing SI, we don't have to do this branch
+  else if (status == PREPARING) {
+    // We return the END ID since once we are in Preparing mode, we have already
+    // acquired an END ID.
+    return ts.txn->GetEndID();
+  }
+  // We could change the return depending on when the TS is "propagated".
   else if (status == COMPLETED_C) {
     return ts.txn->GetEndID();
   }
@@ -107,10 +136,11 @@ uint64 MVCCStorage::GetBeginTimestamp(Version * v, int my_id, TimeStamp & ts) {
 
 void MVCCStorage::InitTS(TimeStamp ts) {
   ts.timestamp = -1;
-  ts.t = NULL;
+  ts.txn = NULL;
+  ts.edit_bit = false;
 }
 
-bool MVCCStorage::Read(Key key, Value* result, int txn_unique_id, Txn * this_txn) {
+bool MVCCStorage::Read(Key key, Value* result, int txn_unique_id) {
 
   if (mvcc_data_.count(key)) {
     deque<Version*> * data_versions_p =  mvcc_data_[key];
