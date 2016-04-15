@@ -8,7 +8,7 @@
 
 
 struct TimeStamp {
-  int timestamp;
+  uint64 timestamp;
   Txn* txn;
   bool edit_bit;
 };

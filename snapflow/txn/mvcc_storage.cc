@@ -69,9 +69,9 @@ void MVCCStorage::SetTs(TimeStamp & ts, int t, bool mode, Txn * t2) {
 }
 
 
-int MVCCStorage::GetBeginTimestamp(Version * v, int my_id, TimeStamp & ts) {
-  TimeStamp new_ts;
+uint64 MVCCStorage::GetBeginTimestamp(Version * v, int my_id, TimeStamp & ts) {
   // What if ts.txn has committed and replaced itself?
+  // This requires that the txn keeps its pointer in the Txn field of the TS
   int status = ts.txn->GetStatus();
   int id = ts.txn->GetStartID();
 
@@ -92,13 +92,10 @@ int MVCCStorage::GetBeginTimestamp(Version * v, int my_id, TimeStamp & ts) {
     return ts.txn->GetEndID();
   }
   else if (status == COMPLETED_C) {
-    // This is in non-speculative mode
-    SetTs(ts, t2->GetEndID(), spec_mode, t2);
-    return ts;
+    return ts.txn->GetEndID();
   }
   else if (status == COMPLETED_A || status == ABORTED) {
-    SetTs(ts, INF_INT, spec_mode, t2);
-    return ts;
+    return INF_INT;
   }
   else {
     // the status is INCOMPLETE?
@@ -117,15 +114,11 @@ bool MVCCStorage::Read(Key key, Value* result, int txn_unique_id, Txn * this_txn
 
   if (mvcc_data_.count(key)) {
     deque<Version*> * data_versions_p =  mvcc_data_[key];
-    TimeStamp begin_ts, end_ts;
+    uint64 begin_ts, end_ts;
     // This works under the assumption that we have the deque sorted in decreasing order
     Version *right_version = NULL;
     for (deque<Version*>::iterator it = data_versions_p->begin();
       it != data_versions_p->end(); ++it) {
-
-      InitTS(begin_ts);
-      InitTS(end_ts);
-
 
       // Case 2:
       if ((*it)->begin_id_.edit_bit) {
@@ -150,19 +143,9 @@ bool MVCCStorage::Read(Key key, Value* result, int txn_unique_id, Txn * this_txn
         }
       }
 
-      /*
+      
       // At the end, check using the timestamps found above:
-      if ((begin_ts.timestamp <= txn_unique_id) && (end_ts.timestamp > txn_unique_id)) {
-        // We acquired a dependency
-        if (begin_ts.speculative_mode) {
-          begin_ts.dependency->CommitDepSet.Insert(this_txn);
-          this_txn->CommitDepCount++;
-        }
-        if (end_ts.speculative_mode) {
-          end_ts.dependency->CommitDepSet.Insert(this_txn);
-          this_txn->CommitDepCount++;
-        }
-
+      if ((begin_ts <= txn_unique_id) && (end_ts > txn_unique_id)) {
         right_version = (*it);
         break;
       }
@@ -173,13 +156,11 @@ bool MVCCStorage::Read(Key key, Value* result, int txn_unique_id, Txn * this_txn
     else {
       *result = right_version->value_;
     }
-    */
   }
   else {
     return false;
   }
   return true;
-  }
 }
 
 
