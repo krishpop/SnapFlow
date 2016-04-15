@@ -62,12 +62,6 @@ void MVCCStorage::Unlock(Key key) {
  *
  */
 
-void MVCCStorage::SetTs(TimeStamp & ts, int t, bool mode, Txn * t2) {
-  ts.timestamp = t;
-  ts.speculative_mode = mode;
-  ts.dependency = t2;
-}
-
 
 uint64 MVCCStorage::GetBeginTimestamp(Version * v, int my_id, TimeStamp & ts) {
   // What if ts.txn has committed and replaced itself?
