@@ -6,7 +6,13 @@
 // Init the storage
 void MVCCStorage::InitStorage() {
   for (int i = 0; i < 1000000;i++) {
-    Write(i, 0, 0);
+    mvcc_data_[i] = new deque<Version*>();
+    TimeStamp* begin_ts, end_ts;
+    begin_ts = new TimeStamp{ 0; NULL; 0; }
+    end_ts = new TimeStamp{ INF_INT; NULL; 0; }
+    Version* to_insert = new Version{ 0; begin_ts; end_ts; }
+    mvcc_data_[i]->push_front(&to_insert);
+    // do we need key_mutex?
     Mutex* key_mutex = new Mutex();
     mutexs_[i] = key_mutex;
   }
