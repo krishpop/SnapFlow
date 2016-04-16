@@ -61,11 +61,8 @@ TxnProcessor::~TxnProcessor() {
 void TxnProcessor::NewTxnRequest(Txn* txn) {
   // Atomically assign the txn a new number and add it to the incoming txn
   // requests queue.
-  mutex_.Lock();
-  txn->unique_id_ = next_unique_id_;
-  next_unique_id_++;
+
   txn_requests_.Push(txn);
-  mutex_.Unlock();
 }
 
 Txn* TxnProcessor::GetTxnResult() {
@@ -435,6 +432,111 @@ void TxnProcessor::RunOCCParallelScheduler() {
             txn));
     }
   }
+}
+
+
+//////////////////////////////////////////////////////////////////////////////
+
+void TxnProcessor::GetBeginTimestamp(Txn* txn) {
+
+  mutex_.Lock();
+    txn->unique_id_ = next_unique_id_;
+    txn->status_ = ACTIVE;
+    next_unique_id_++;
+  mutex_.Unlock();
+}
+
+void TxnProcessor::GetEndTimestamp(Txn* txn) {
+
+  mutex_.Lock();
+    txn->end_unique_id_ = next_unique_id_;
+    txn->status_ = COMMITTED;
+    next_unique_id_++;
+  mutex_.Unlock();
+}
+
+
+void TxnProcessor::GetReads(Txn* txn) {
+
+  for (set<Key>::iterator it = txn->readset_.begin();
+     it != txn->readset_.end(); ++it) {
+
+    Version result;
+    if (storage_->Read(*it, &result, txn->unique_id_)) {
+      txn->reads_[*it] = result;
+    }
+  }
+
+}
+
+bool TxnProcessor::CheckWrites(Txn* txn) {
+
+  for (set<Key>::iterator it = txn->writeset_.begin();
+     it != txn->writeset_.end(); ++it) {
+
+    Version result;
+    if (storage_->Read(*it, &result, txn->unique_id_)) {
+      txn->reads_[*it] = result;
+
+      if (!storage_->CheckWrite(*it, result, txn)) {
+        return false;
+      }
+    }
+  }
+
+}
+
+void TxnProcessor::FinishWrites(Txn* txn) {
+
+  for (set<Key>::iterator it = txn->writes_.begin();
+     it != txn->writes_.end(); ++it) {
+
+    // first is pointer to version, 2nd is txn
+    storage_->FinishWrite(*it, txn);
+
+  }
+
+}
+
+void TxnProcessor::PutEndTimestamps(Txn* txn) {
+
+  for (set<Key>::iterator it = txn->writes_.begin();
+     it != txn->writes_.end(); ++it) {
+
+    // first is pointer to version, 2nd is end timestamp
+    storage_->PutEndTimestamp(*it, txn->end_unique_id_);
+
+  }
+
+}
+
+void TxnProcessor::OMVCCExecuteTxn(Txn* txn) {
+
+  // TODO:
+  // - GetBeginTimestamp(Txn* txn): set txn->begin_ts_
+  // - add int begin_ts_ to txn
+  // - change reads_ and writes_ to take Version*
+  // - 
+
+  GetBeginTimestamp(txn);
+
+  GetReads(txn);
+
+  if (!CheckWrites(txn))
+    txn->status_ = ABORTED;
+
+  if (txn->status_ == ACTIVE) {
+    txn->Run();
+
+    FinishWrites(txn);
+    GetEndTimestamp(txn);
+  }
+
+  if (txn->status_ == COMMITTED){
+    PutEndTimestamps(txn);
+  }
+
+
 }
 
 void TxnProcessor::MVCCExecuteTxn(Txn* txn) {
