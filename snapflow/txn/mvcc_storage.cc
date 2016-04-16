@@ -7,11 +7,13 @@
 void MVCCStorage::InitStorage() {
   for (int i = 0; i < 1000000;i++) {
     mvcc_data_[i] = new deque<Version*>();
-    TimeStamp* begin_ts, end_ts;
-    begin_ts = new TimeStamp{ 0; NULL; 0; }
-    end_ts = new TimeStamp{ INF_INT; NULL; 0; }
-    Version* to_insert = new Version{ 0; begin_ts; end_ts; }
-    mvcc_data_[i]->push_front(&to_insert);
+    TimeStamp begin_ts = TimeStamp{ 0, NULL, 0 };
+    TimeStamp end_ts = TimeStamp{ INF_INT, NULL, 0 };
+    Version* to_insert = new Version;
+    to_insert->value_ = 0;
+    to_insert->begin_id_ = begin_ts;
+    to_insert->end_id_ = end_ts;
+    mvcc_data_[i]->push_front(to_insert);
     // do we need key_mutex?
     Mutex* key_mutex = new Mutex();
     mutexs_[i] = key_mutex;
@@ -200,13 +202,13 @@ bool MVCCStorage::Read(Key key, Version* result, int txn_unique_id) {
 // MVCC CheckWrite returns true if Write without conflict
 bool MVCCStorage::CheckWrite(Key key, Version* read_version, txn* current_txn) {
   deque<Version*> * data_p = mvcc_data_[key];
-  deque<Version*>::iterator front = data_p->begin();
+  deque<Version*>::iterator front = data_p->front();
 
     // mutex locks critical section of acquiring write priviledge
   if (CAS(front->end_id_.edit_bit)) {
     return true;
   } else if (front->txn->Status() == ABORTED) {
-    TimeStamp end_ts = TimeStamp{ current_txn->begin_id_; current_txn; 1 };
+    TimeStamp end_ts = TimeStamp{ current_txn->begin_id_, current_txn, 1 };
     front->txn = current_txn;
     front->end_id_ = end_ts;
     return true;
