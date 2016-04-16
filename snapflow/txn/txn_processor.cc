@@ -61,7 +61,11 @@ TxnProcessor::~TxnProcessor() {
 void TxnProcessor::NewTxnRequest(Txn* txn) {
   // Atomically assign the txn a new number and add it to the incoming txn
   // requests queue.
+<<<<<<< HEAD
 
+=======
+  mutex_.Lock();
+>>>>>>> 6c24c8d35d6815dad123102a36c73925cf4477ff
   txn_requests_.Push(txn);
 }
 
