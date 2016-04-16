@@ -1,5 +1,5 @@
 // Author: Kun Ren (kun.ren@yale.edu)
-// Modified by Daniel Abadi
+// Modified by Daniel Abadi, David Marcano, Krishnan Srinivasan, Kshitijh Meelu, Jeremy Liu
 
 #include "txn/mvcc_storage.h"
 
@@ -126,7 +126,11 @@ uint64 MVCCStorage::GetEndTimestamp(Version * v, int my_id, TimeStamp & ts) {
 
 }
 
-
+void MVCCStorage::SetTS(TimeStamp & ts, int t, Txn * t2, Atomic<int> eb) {
+  ts.timestamp = t;
+  ts.txn = t2;
+  ts.edit_bit = eb;
+}
 
 void MVCCStorage::InitTS(TimeStamp ts) {
   ts.timestamp = -1;
@@ -167,7 +171,7 @@ bool MVCCStorage::Read(Key key, Version* result, int txn_unique_id) {
         }
       }
 
-      
+
       // At the end, check using the timestamps found above:
       if ((begin_ts <= txn_unique_id) && (end_ts > txn_unique_id)) {
         right_version = (*it);
@@ -187,78 +191,25 @@ bool MVCCStorage::Read(Key key, Version* result, int txn_unique_id) {
   return true;
 }
 
+// MVCC CheckWrite returns true if Write without conflict
+bool MVCCStorage::CheckWrite(Key key, Version* read_version, txn* current_txn) {
+  deque<Version*> * data_p = mvcc_data_[key];
+  deque<Version*>::iterator front = data_p->begin();
 
-// Check whether apply or abort the write
-bool MVCCStorage::CheckWrite(Key key, int txn_unique_id) {
-  // CPSC 438/538:
-  //
-  // Implement this method!
-
-  // Hint: Before all writes are applied, we need to make sure that each write
-  // can be safely applied based on MVCC timestamp ordering protocol. This method
-  // only checks one key, so you should call this method for each key in the
-  // write_set. Return true if this key passes the check, return false if not.
-  // Note that you don't have to call Lock(key) in this method, just
-  // call Lock(key) before you call this method and call Unlock(key) afterward.
-
-  if (mvcc_data_.count(key)) {
-    // Obtain the most recent version before txn_unique_id
-    deque<Version*> * data_versions_p =  mvcc_data_[key];
-    Version *most_recent_version = NULL;
-    for (deque<Version*>::iterator it = data_versions_p->begin();
-      it != data_versions_p->end(); ++it) {
-
-      // Here we assume that the deque is sorted in decreasing order
-      if (((*it)->version_id_ <= txn_unique_id)) {
-        if(txn_unique_id >= (*it)->max_read_id_) {
-          most_recent_version = (*it);
-          break;
-        }
-        else {
-          return false;
-        }
-      }
-
-    }
-    if (most_recent_version->max_read_id_ > txn_unique_id) {
-      return false;
-    }
-
+    // mutex locks critical section of acquiring write priviledge
+  if (CAS(front->end_id_.edit_bit)) {
+    return true;
+  } else if (front->txn->Status() == ABORTED) {
+    TimeStamp end_ts = TimeStamp{ current_txn->begin_id_; current_txn; 1 };
+    front->txn = current_txn;
+    front->end_id_ = end_ts;
+    return true;
   }
-
-  return true;
+  return false;
 }
 
-// MVCC Write, call this method only if CheckWrite return true.
-void MVCCStorage::Write(Key key, Value value, int txn_unique_id) {
-  // CPSC 438/538:
-  //
-  // Implement this method!
-
-  // Hint: Insert a new version (malloc a Version and specify its value/version_id/max_read_id)
-  // into the version_lists. Note that InitStorage() also calls this method to init storage.
-  // Note that you don't have to call Lock(key) in this method, just
-  // call Lock(key) before you call this method and call Unlock(key) afterward.
-  Version * to_insert = new Version{ value, 0, txn_unique_id };
-
-  if (!mvcc_data_.count(key)) {
-    mvcc_data_[key] = new deque<Version*>();
-    mvcc_data_[key]->push_back(to_insert);
-  }
-  else {
-    deque<Version*> * data_p = mvcc_data_[key];
-    // We have to insert into the sorted order
-    for(deque<Version*>::iterator it = data_p->begin();
-      it != data_p->end(); ++it) {
-      // If we have reached a point to insert
-      // Not sure if we have to insert when the id is ==
-      if ((*it)->version_id_ <= txn_unique_id) {
-        it = data_p->insert(it, to_insert);
-        return;
-      }
-    }
-
-    data_p->push_back(to_insert);
-  }
-
+void MVCCStorage::FinalWrite(Key key, Version* new_version, txn* current_txn) {
+  deque<Version*> * data_p = mvcc_data_[key];
+  data_p->push_front(new_version);
+  return;
 }

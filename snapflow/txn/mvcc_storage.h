@@ -10,7 +10,7 @@
 struct TimeStamp {
   uint64 timestamp;
   Txn* txn;
-  bool edit_bit;
+  Atomic<int> edit_bit;
 };
 
 // MVCC 'version' structure
@@ -31,9 +31,12 @@ class MVCCStorage : public Storage {
   // The third parameter is the txn_unique_id(txn timestamp), which is used for MVCC.
   virtual bool Read(Key key, Value* result, int txn_unique_id = 0);
 
+  // Check whether apply or abort the write
+  virtual bool CheckWrite(Key key, Version* read_version, txn* current_txn);
+
   // Inserts a new version with key and value
   // The third parameter is the txn_unique_id(txn timestamp), which is used for MVCC.
-  virtual void Write(Key key, Value value, int txn_unique_id = 0);
+  virtual void FinishWrite(Key key, Value value, txn* current_txn);
 
   // Returns the timestamp at which the record with the specified key was last
   // updated (returns 0 if the record has never been updated). This is used for OCC.
@@ -48,9 +51,6 @@ class MVCCStorage : public Storage {
   // Unlock the version_list of key
   virtual void Unlock(Key key);
 
-  // Check whether apply or abort the write
-  virtual bool CheckWrite (Key key, int txn_unique_id);
-
   int GetBeginTimestamp(Version * v, int my_id, TxnTable * t);
 
   int GetEndTimestamp(Version * v, int my_id);
@@ -59,7 +59,7 @@ class MVCCStorage : public Storage {
 
  private:
 
-  void MVCCStorage::SetTs(SpeculativeTS & ts, int t, bool mode);
+  void MVCCStorage::SetTS(SpeculativeTS & ts, int t, bool mode);
 
   void MVCCStorage::InitTS(SpeculativeTS & ts)
 
@@ -69,7 +69,7 @@ class MVCCStorage : public Storage {
   unordered_map<Key, deque<Version*>*> mvcc_data_;
 
   // Mutexs for each key
-  unordered_map<Key, Mutex*> mutexs_;
+  unordered_map<Key, Atomic<int>> write_access_table_;
 
   unordered_map<Key, Atomic<int>> write_access_table_;
 

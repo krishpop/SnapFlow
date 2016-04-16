@@ -46,7 +46,7 @@ class Txn {
   void CheckReadWriteSets();
 
   // Returns the Txn's current execution status.
-  TxnStatus Status() { return status_; }
+  TxnStatus GetStatus() { return status_; }
 
   uint64 GetStartID() { return unique_id_; }
 
@@ -120,4 +120,3 @@ class Txn {
 };
 
 #endif  // _TXN_H_
-

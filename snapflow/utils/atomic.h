@@ -152,7 +152,7 @@ class AtomicSet {
     mutex_.Unlock();
     return first;
   }
-  
+
   // Returns a copy of the underlying set.
   set<V> GetSet() {
     mutex_.ReadLock();
@@ -333,4 +333,3 @@ class Atomic {
 };
 
 #endif  // _DB_UTILS_ATOMIC_H_
-
