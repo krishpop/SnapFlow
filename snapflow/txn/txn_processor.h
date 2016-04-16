@@ -10,9 +10,7 @@
 #include <string>
 
 #include "txn/common.h"
-#include "txn/lock_manager.h"
 #include "txn/storage.h"
-#include "txn/mvcc_storage.h"
 #include "txn/txn.h"
 #include "utils/atomic.h"
 #include "utils/static_thread_pool.h"
@@ -24,19 +22,12 @@ using std::deque;
 using std::map;
 using std::string;
 
-// The TxnProcessor supports five different execution modes, corresponding to
-// the four parts of assignment 2, plus a simple serial (non-concurrent) mode.
 enum CCMode {
-  SERIAL = 0,                  // Serial transaction execution (no concurrency)
-  LOCKING_EXCLUSIVE_ONLY = 1,  // Part 1A
-  LOCKING = 2,                 // Part 1B
-  OCC = 3,                     // Part 2
-  P_OCC = 4,                   // Part 3
-  MVCC = 5,
+  SERIAL = 0,
+  SI = 1,                  // Snapshot isolation (by Larson)
+  NEW = 2                // Our new control flow algo
 };
 
-// Returns a human-readable string naming of the providing mode.
-string ModeToString(CCMode mode);
 
 class TxnProcessor {
  public:
@@ -60,64 +51,42 @@ class TxnProcessor {
   void RunScheduler();
   
   static void* StartScheduler(void * arg);
+  // An instance transaction table of txns that have WRITTEN/TRIED TO WRITE
+  // to the database
   
  private:
-
-  // Serial validation (changed to void)
-  void SerialValidate();
-
-  // Added: Parallel Validation
-  void ParallelValidate(Txn* txn);
-
-  // ADDED: encapsulation of OCC's read phase.
-  void ExecuteReadPhase(Txn*);
-
-  // Parallel executtion/validation for OCC
-  void ExecuteTxnParallel(Txn *txn);
-
-  // Helper function to see if current_txn's readset intersects with
-  // active_txn's writeset.
-  bool readsetIntersects(Txn* active_txn, Txn* current_txn);
-
-  // Helper function to see if current_txn's writeset intersects with
-  // active_txn's read or write set.
-  bool writesetIntersects(Txn* active_txn, Txn* current_txn);
-
-  // Serial version of scheduler.
-  void RunSerialScheduler();
-
-  // Locking version of scheduler.
-  void RunLockingScheduler();
-
-  // OCC version of scheduler.
-  void RunOCCScheduler();
-
-  // OCC version of scheduler with parallel validation.
-  void RunOCCParallelScheduler();
-  
-  // MVCC version of scheduler.
-  void RunMVCCScheduler();
 
   // Performs all reads required to execute the transaction, then executes the
   // transaction logic.
   void ExecuteTxn(Txn* txn);
 
-  // Cleans up and restarts the txn in case of invalid txn for OCC (both serial and parallel)
-  void cleanupRestart(Txn*);
+  // Serial version of scheduler.
+  void RunSerialScheduler();
 
   // Applies all writes performed by '*txn' to 'storage_'.
   //
   // Requires: txn->Status() is COMPLETED_C.
   void ApplyWrites(Txn* txn);
-  
-  // The following functions are for MVCC
-  void MVCCExecuteTxn(Txn* txn);
-    
-  bool MVCCCheckWrites(Txn* txn);
 
-  void MVCCLockWriteKeys(Txn* txn);
+  void GetBeginTimestamp(Txn* txn);
 
-  void MVCCUnlockWriteKeys(Txn* txn);
+  void GetEndTimestamp(Txn* txn);
+
+  void GetReads(Txn* txn);
+
+  bool CheckWrites(Txn* txn);
+
+  void FinishWrites(Txn* txn);
+
+  void PutEndTimestamps(Txn* txn);
+
+  void SnapshotExecuteTxn();
+
+  // snapshot version of scheduler.
+  void RunSnapshotScheduler();
+
+  // run our new version
+  void RunNewScheduler();
   
   void GarbageCollection();
   
@@ -137,28 +106,17 @@ class TxnProcessor {
   // Queue of incoming transaction requests.
   AtomicQueue<Txn*> txn_requests_;
 
-  // Queue of txns that have acquired all locks and are ready to be executed.
-  //
-  // Does not need to be atomic because RunScheduler is the only thread that
-  // will ever access this queue.
-  deque<Txn*> ready_txns_;
 
+  // THESE SEEM Deprecated, but I think we might want to implement
   // Queue of completed (but not yet committed/aborted) transactions.
   AtomicQueue<Txn*> completed_txns_;
 
   // Queue of transaction results (already committed or aborted) to be returned
   // to client.
   AtomicQueue<Txn*> txn_results_;
-  
-  // Set of transactions that are currently in the process of parallel
-  // validation.
-  AtomicSet<Txn*> active_set_;
 
-  // Used it for critical section in parallel occ.
-  Mutex active_set_mutex_;
 
-  // Lock Manager used for LOCKING concurrency implementations.
-  LockManager* lm_;
+
 };
 
 #endif  // _TXN_PROCESSOR_H_
