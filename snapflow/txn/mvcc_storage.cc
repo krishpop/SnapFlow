@@ -1,5 +1,5 @@
 // Author: Kun Ren (kun.ren@yale.edu)
-// Modified by Daniel Abadi
+// Modified by Daniel Abadi, David Marcano, Krishnan Srinivasan, Kshitijh Meelu, Jeremy Liu
 
 #include "txn/mvcc_storage.h"
 
