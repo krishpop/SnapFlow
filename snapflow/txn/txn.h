@@ -18,6 +18,8 @@ using std::vector;
 // Txns can have five distinct status values:
 enum TxnStatus {
   INCOMPLETE = 0,   // Not yet executed
+
+  // DO WE NEED THESE TWO?
   COMPLETED_C = 1,  // Executed (with commit vote)
   COMPLETED_A = 2,  // Executed (with abort vote)
   COMMITTED = 3,    // Committed
@@ -31,13 +33,17 @@ enum TxnStatus {
 
 class Txn {
  public:
-  // Commit vote defauls to false. Only by calling "commit"
-  Txn() : status_(INCOMPLETE), CommitDepCount(0), AbortNow(false) {}
+
+  Txn() : status_(INCOMPLETE) {}
   virtual ~Txn() {}
   virtual Txn * clone() const = 0;    // Virtual constructor (copying)
 
   // Method containing all the transaction's method logic.
   virtual void Run() = 0;
+
+  // Checks for overlap in read and write sets. If any key appears in both,
+  // an error occurs.
+  void CheckReadWriteSets();
 
   // Returns the Txn's current execution status.
   TxnStatus Status() { return status_; }
@@ -45,19 +51,6 @@ class Txn {
   uint64 GetStartID() { return unique_id_; }
 
   uint64 GetEndID() { return end_unique_id_; }
-
-  // Checks for overlap in read and write sets. If any key appears in both,
-  // an error occurs.
-  void CheckReadWriteSets();
-
-  // Counter to count how many dependencies this txn has
-  Atomic<int> CommitDepCount;
-
-  // Atomic Set of txn that depend on this txn.
-  AtomicSet<Txn*> CommitDepSet;
-
-  // Flag that other txns can set to abort this txn.
-  bool AbortNow;
 
  protected:
   // Copies the internals of this txn into a given transaction (i.e.
@@ -124,8 +117,6 @@ class Txn {
   // Unique, monotonically increasing transaction ID, assigned by TxnProcessor.
   uint64 end_unique_id_;
 
-  // Start time (used for OCC).
-  double occ_start_time_;
 };
 
 #endif  // _TXN_H_
