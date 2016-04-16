@@ -16,6 +16,7 @@ TxnProcessor::TxnProcessor(CCMode mode)
   // Create the storage
   storage_ = new Storage();
   
+
   storage_->InitStorage();
 
   // Start 'RunScheduler()' running.
@@ -24,16 +25,16 @@ TxnProcessor::TxnProcessor(CCMode mode)
   pthread_attr_init(&attr);
   CPU_ZERO(&cpuset);
   CPU_SET(0, &cpuset);
-  CPU_SET(1, &cpuset);       
+  CPU_SET(1, &cpuset);
   CPU_SET(2, &cpuset);
   CPU_SET(3, &cpuset);
   CPU_SET(4, &cpuset);
   CPU_SET(5, &cpuset);
-  CPU_SET(6, &cpuset);  
+  CPU_SET(6, &cpuset);
   pthread_attr_setaffinity_np(&attr, sizeof(cpu_set_t), &cpuset);
   pthread_t scheduler_;
   pthread_create(&scheduler_, &attr, StartScheduler, reinterpret_cast<void*>(this));
-  
+
 }
 
 void* TxnProcessor::StartScheduler(void * arg) {
@@ -42,7 +43,7 @@ void* TxnProcessor::StartScheduler(void * arg) {
 }
 
 TxnProcessor::~TxnProcessor() {
-    
+
   delete storage_;
 }
 
@@ -94,6 +95,7 @@ void TxnProcessor::RunSerialScheduler() {
     }
   }
 }
+
 
 void TxnProcessor::ExecuteTxn(Txn* txn) {
 
@@ -149,7 +151,6 @@ void TxnProcessor::GetEndTimestamp(Txn* txn) {
     next_unique_id_++;
   mutex_.Unlock();
 }
-
 
 void TxnProcessor::GetReads(Txn* txn) {
 
@@ -230,6 +231,7 @@ void TxnProcessor::SnapshotExecuteTxn(Txn* txn) {
 
 
 }
+
 
 void TxnProcessor::RunSnapshotScheduler() {
   Txn* txn;

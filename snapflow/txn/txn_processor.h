@@ -51,8 +51,10 @@ class TxnProcessor {
   void RunScheduler();
   
   static void* StartScheduler(void * arg);
+
   // An instance transaction table of txns that have WRITTEN/TRIED TO WRITE
   // to the database
+
   
  private:
 
