@@ -18,17 +18,22 @@ using std::vector;
 // Txns can have five distinct status values:
 enum TxnStatus {
   INCOMPLETE = 0,   // Not yet executed
+  ACTIVE = 1,
+  COMMITTED = 2,    // Committed
+  ABORTED = 3,      // Aborted
+};
 
-  // DO WE NEED THESE TWO?
-  COMPLETED_C = 1,  // Executed (with commit vote)
-  COMPLETED_A = 2,  // Executed (with abort vote)
-  COMMITTED = 3,    // Committed
-  ABORTED = 4,      // Aborted
+struct TimeStamp {
+  uint64 timestamp;
+  void* txn;
+  Atomic<int> edit_bit;
+};
 
-  // our own added statuses
-  PREPARING = 5,
-  ACTIVE = 6,
-
+// MVCC 'version' structure
+struct Version {
+  Value value_;      // The value of this version
+  TimeStamp begin_id_; // The timestamp of the earliest possible transaction to read/write this version
+  TimeStamp end_id_; // Timestamp of the latest possible transaction to read/write this version
 };
 
 class Txn {
@@ -46,7 +51,7 @@ class Txn {
   void CheckReadWriteSets();
 
   // Returns the Txn's current execution status.
-  TxnStatus GetStatus() { return status_; }
+  TxnStatus Status() { return status_; }
 
   uint64 GetStartID() { return unique_id_; }
 
@@ -103,10 +108,10 @@ class Txn {
   set<Key> writeset_;
 
   // Results of reads performed by the transaction.
-  map<Key, Value> reads_;
+  map<Key, Version*> reads_;
 
   // Key, Value pairs WRITTEN by the transaction.
-  map<Key, Value> writes_;
+  map<Key, Version*> writes_;
 
   // Transaction's current execution status.
   TxnStatus status_;
@@ -118,5 +123,7 @@ class Txn {
   uint64 end_unique_id_;
 
 };
+
+
 
 #endif  // _TXN_H_

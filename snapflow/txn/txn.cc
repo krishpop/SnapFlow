@@ -2,7 +2,7 @@
 
 #include "txn/txn.h"
 
-bool Txn::Read(const Key& key, Value* value) {
+bool Txn::Read(const Key& key, Value * value) {
   // Check that key is in readset/writeset.
   if (readset_.count(key) == 0 && writeset_.count(key) == 0)
     DIE("Invalid read (key not in readset or writeset).");
@@ -14,7 +14,7 @@ bool Txn::Read(const Key& key, Value* value) {
   // 'reads_' has already been populated by TxnProcessor, so it should contain
   // the target value iff the record appears in the database.
   if (reads_.count(key)) {
-    *value = reads_[key];
+    *value = reads_[key]->value_;
     return true;
   } else {
     return false;
@@ -30,12 +30,19 @@ void Txn::Write(const Key& key, const Value& value) {
   if (status_ != INCOMPLETE)
     return;
 
+  Version * to_insert = new Version;
+  Timestamp begin_ts = Timestamp{0, this, 1};
+  Timestamp end_ts = Timestamp{INF_INT, NULL, 0};
+
+  to_insert->value_ = value;
+  to_insert->begin_id_ = begin_ts;
+  to_insert->end_id_ = end_ts;
   // Set key-value pair in write buffer.
-  writes_[key] = value;
+  writes_[key] = to_insert;
 
   // Also set key-value pair in read results in case txn logic requires the
   // record to be re-read.
-  reads_[key] = value;
+  //reads_[key] = value;
 }
 
 void Txn::CheckReadWriteSets() {

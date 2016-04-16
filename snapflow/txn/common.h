@@ -74,5 +74,6 @@ static inline int StringToInt(const string& s) {
   return atoi(s.c_str());
 }
 
+
 #endif  // _COMMON_H_
 

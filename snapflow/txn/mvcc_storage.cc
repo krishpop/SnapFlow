@@ -66,8 +66,9 @@ void MVCCStorage::Unlock(Key key) {
 uint64 MVCCStorage::GetBeginTimestamp(Version * v, int my_id, TimeStamp & ts) {
   // What if ts.txn has committed and replaced itself?
   // This requires that the txn keeps its pointer in the Txn field of the TS
-  int status = ts.txn->GetStatus();
-  uint64 id = ts.txn->GetStartID();
+  Txn * txn_p = (Txn*) ts.txn;
+  int status = txn_p->GetStatus();
+  uint64 id = txn_p->GetStartID();
 
   if (status == ACTIVE) {
     if (id == my_id && v->end_id_.timestamp == INF_INT) {
@@ -79,21 +80,12 @@ uint64 MVCCStorage::GetBeginTimestamp(Version * v, int my_id, TimeStamp & ts) {
       return INF_INT;
     }
   }
-  // Since we're doing SI, we don't have to do this branch
-  else if (status == PREPARING) {
-    // We return the END ID since once we are in Preparing mode, we have already
-    // acquired an END ID.
-    return ts.txn->GetEndID();
-  }
   // We could change the return depending on when the TS is "propagated".
-  else if (status == COMPLETED_C) {
-    return ts.txn->GetEndID();
+  else if (status == COMMITTED) {
+    return txn_p->GetEndID();
   }
-  else if (status == COMPLETED_A || status == ABORTED) {
+  else if (status == ABORTED) {
     return INF_INT;
-  }
-  else {
-    // the status is INCOMPLETE?
   }
 
 }
@@ -101,27 +93,18 @@ uint64 MVCCStorage::GetBeginTimestamp(Version * v, int my_id, TimeStamp & ts) {
 uint64 MVCCStorage::GetEndTimestamp(Version * v, int my_id, TimeStamp & ts) {
   // What if ts.txn has committed and replaced itself?
   // This requires that the txn keeps its pointer in the Txn field of the TS
-  TxnStatus status = ts.txn->Status();
-  uint64 id = ts.txn->GetStartID();
+  Txn * txn_p = (Txn*) ts.txn;
+  TxnStatus status = txn_p->Status();
+  uint64 id = txn_p->GetStartID();
 
   if (status == ACTIVE) {
       return INF_INT;
   }
-  // Since we're doing SI, we don't have to do this branch
-  else if (status == PREPARING) {
-    // We return the END ID since once we are in Preparing mode, we have already
-    // acquired an END ID.
-    return ts.txn->GetEndID();
+  else if (status == COMMITTED) {
+    return txn_p->GetEndID();
   }
-  // We could change the return depending on when the TS is "propagated".
-  else if (status == COMPLETED_C) {
-    return ts.txn->GetEndID();
-  }
-  else if (status == COMPLETED_A || status == ABORTED) {
+  else if (status == ABORTED) {
     return INF_INT;
-  }
-  else {
-    // the status is INCOMPLETE?
   }
 
 }
@@ -182,13 +165,19 @@ bool MVCCStorage::Read(Key key, Version* result, int txn_unique_id) {
       return false;
     }
     else {
-      *result = right_version;
+      result = right_version;
     }
   }
   else {
     return false;
   }
   return true;
+}
+
+// TODO: Change the end timestamp of old version, flip the bit, change
+// the begin timsteamp of new version and flip bit.
+void PutEndTimestamp(Version * old_version, Version * new_version) {
+
 }
 
 // MVCC CheckWrite returns true if Write without conflict
@@ -208,7 +197,7 @@ bool MVCCStorage::CheckWrite(Key key, Version* read_version, txn* current_txn) {
   return false;
 }
 
-void MVCCStorage::FinalWrite(Key key, Version* new_version, txn* current_txn) {
+void MVCCStorage::FinishWrite(Key key, Version* new_version) {
   deque<Version*> * data_p = mvcc_data_[key];
   data_p->push_front(new_version);
   return;

@@ -7,18 +7,6 @@
 #include "limits.h"
 
 
-struct TimeStamp {
-  uint64 timestamp;
-  Txn* txn;
-  Atomic<int> edit_bit;
-};
-
-// MVCC 'version' structure
-struct Version {
-  Value value_;      // The value of this version
-  TimeStamp begin_id_; // The timestamp of the earliest possible transaction to read/write this version
-  TimeStamp end_id_; // Timestamp of the latest possible transaction to read/write this version
-};
 
 // The upper limit for ints.
 int INF_INT = std::numeric_limits<int>::max();
@@ -55,6 +43,8 @@ class MVCCStorage : public Storage {
 
   int GetEndTimestamp(Version * v, int my_id);
 
+  void PutEndTimestamp(Version * old_version, Version * new_version);
+
   virtual ~MVCCStorage();
 
  private:
@@ -71,7 +61,6 @@ class MVCCStorage : public Storage {
   // Mutexs for each key
   unordered_map<Key, Atomic<int>> write_access_table_;
 
-  unordered_map<Key, Atomic<int>> write_access_table_;
 
 };
 

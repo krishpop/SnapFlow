@@ -82,8 +82,6 @@ class TxnProcessor {
 
   void PutEndTimestamps(Txn* txn);
 
-  void SnapshotExecuteTxn();
-
   // snapshot version of scheduler.
   void RunSnapshotScheduler();
 
@@ -91,6 +89,8 @@ class TxnProcessor {
   void RunNewScheduler();
   
   void GarbageCollection();
+
+  void SnapshotExecuteTxn(Txn* txn);
   
   // Concurrency control mechanism the TxnProcessor is currently using.
   CCMode mode_;

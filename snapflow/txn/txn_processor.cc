@@ -16,7 +16,11 @@ TxnProcessor::TxnProcessor(CCMode mode)
   // Create the storage
   storage_ = new Storage();
   
-
+  if (mode_ == SERIAL) {
+    storage_ = new Storage();
+  } else {
+    storage_ = new MVCCStorage();
+  }
   storage_->InitStorage();
 
   // Start 'RunScheduler()' running.
@@ -157,8 +161,8 @@ void TxnProcessor::GetReads(Txn* txn) {
   for (set<Key>::iterator it = txn->readset_.begin();
      it != txn->readset_.end(); ++it) {
 
-    Version result;
-    if (storage_->Read(*it, &result, txn->unique_id_)) {
+    Version *result;
+    if (storage_->Read(*it, result, txn->unique_id_)) {
       txn->reads_[*it] = result;
     }
   }
@@ -170,8 +174,8 @@ bool TxnProcessor::CheckWrites(Txn* txn) {
   for (set<Key>::iterator it = txn->writeset_.begin();
      it != txn->writeset_.end(); ++it) {
 
-    Version result;
-    if (storage_->Read(*it, &result, txn->unique_id_)) {
+    Version *result;
+    if (storage_->Read(*it, result, txn->unique_id_)) {
       txn->reads_[*it] = result;
 
       if (!storage_->CheckWrite(*it, result, txn)) {
@@ -179,16 +183,17 @@ bool TxnProcessor::CheckWrites(Txn* txn) {
       }
     }
   }
+  return true;
 
 }
 
 void TxnProcessor::FinishWrites(Txn* txn) {
 
-  for (set<Key>::iterator it = txn->writes_.begin();
+  for (unordered_map<Key, Version*>::iterator it = txn->writes_.begin();
      it != txn->writes_.end(); ++it) {
 
     // first is pointer to version, 2nd is txn
-    storage_->FinishWrite(*it, txn);
+    storage_->FinishWrite(it->first, it->second);
 
   }
 
@@ -196,11 +201,11 @@ void TxnProcessor::FinishWrites(Txn* txn) {
 
 void TxnProcessor::PutEndTimestamps(Txn* txn) {
 
-  for (set<Key>::iterator it = txn->writes_.begin();
+  for (unordered_map<Key, Version*>::iterator it = txn->writes_.begin();
      it != txn->writes_.end(); ++it) {
 
-    // first is pointer to version, 2nd is end timestamp
-    storage_->PutEndTimestamp(*it, txn->end_unique_id_);
+    // first is the old version, 2nd is new version
+    storage_->PutEndTimestamp(reads_[it->first], writes_[it->first]);
 
   }
 
@@ -218,14 +223,14 @@ void TxnProcessor::SnapshotExecuteTxn(Txn* txn) {
   if (!CheckWrites(txn))
     txn->status_ = ABORTED;
 
-  if (txn->status_ == ACTIVE) {
+  if (txn->Status() == ACTIVE) {
     txn->Run();
 
     FinishWrites(txn);
     GetEndTimestamp(txn);
   }
 
-  if (txn->status_ == COMMITTED){
+  if (txn->Status() == COMMITTED){
     PutEndTimestamps(txn);
   }
 
