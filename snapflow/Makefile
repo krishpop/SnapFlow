@@ -51,7 +51,10 @@ MAKEFILE_TEMPLATE := Makefile.template
 include utils/Makefile.inc
 include txn/Makefile.inc
 
-test: $(TESTS)
+#test: $(TESTS)
+
+test_types: txn_types_test.cc
+	$(CXX) $(CXXFLAGS) -o $@ $^
 
 clean:
 	rm -rf $(OBJDIR) $(BINDIR)

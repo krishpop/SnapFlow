@@ -312,8 +312,7 @@ class Atomic {
   }
 
   // Checks if the value is equal to 'old_value'. If so, atomically sets the
-  // value to 'new_value' and returns true, otherwise sets '*old_value' equal
-  // to the value at the time of the comparison and returns false.
+  // value to 'new_value' and returns true. Otherwise returns false.
   //
   // TODO(alex): Use C++ <atomic> library to improve performance?
   bool CAS(T* old_value, T new_value) {

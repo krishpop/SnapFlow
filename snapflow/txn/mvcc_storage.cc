@@ -101,7 +101,7 @@ uint64 MVCCStorage::GetBeginTimestamp(Version * v, int my_id, TimeStamp & ts) {
 uint64 MVCCStorage::GetEndTimestamp(Version * v, int my_id, TimeStamp & ts) {
   // What if ts.txn has committed and replaced itself?
   // This requires that the txn keeps its pointer in the Txn field of the TS
-  int status = ts.txn->GetStatus();
+  TxnStatus status = ts.txn->Status();
   uint64 id = ts.txn->GetStartID();
 
   if (status == ACTIVE) {
@@ -138,7 +138,7 @@ void MVCCStorage::InitTS(TimeStamp ts) {
   ts.edit_bit = false;
 }
 
-bool MVCCStorage::Read(Key key, Value* result, int txn_unique_id) {
+bool MVCCStorage::Read(Key key, Version* result, int txn_unique_id) {
 
   if (mvcc_data_.count(key)) {
     deque<Version*> * data_versions_p =  mvcc_data_[key];
@@ -182,7 +182,7 @@ bool MVCCStorage::Read(Key key, Value* result, int txn_unique_id) {
       return false;
     }
     else {
-      *result = right_version->value_;
+      *result = right_version;
     }
   }
   else {
