@@ -71,6 +71,8 @@ class MVCCStorage : public Storage {
   // Mutexs for each key
   unordered_map<Key, Mutex*> mutexs_;
 
+  unordered_map<Key, Atomic<int>> write_access_table_;
+
 };
 
 #endif  // _MVCC_STORAGE_H_
