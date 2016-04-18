@@ -46,9 +46,6 @@ typedef uint64_t uint64;
 typedef uint64 Key;
 typedef uint64 Value;
 
-// The upper limit for ints.
-uint64 INF_INT = std::numeric_limits<uint64>::max();
-
 // Returns the number of seconds since midnight according to local system time,
 // to the nearest microsecond.
 static inline double GetTime() {

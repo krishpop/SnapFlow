@@ -7,8 +7,8 @@
 void MVCCStorage::InitStorage() {
   for (int i = 0; i < 1000000;i++) {
     mvcc_data_[i] = new deque<Version*>();
-    Timestamp begin_ts = Timestamp{ 0, NULL, 0, 0 };
-    Timestamp end_ts = Timestamp{ INF_INT, NULL, 0, 0 };
+    Timestamp begin_ts = Timestamp{ 0, NULL, 0};
+    Timestamp end_ts = Timestamp{ INF_INT, NULL, 0};
     Version* to_insert = new Version;
     to_insert->value_ = 0;
     to_insert->begin_id_ = begin_ts;
@@ -68,11 +68,11 @@ MVCCStorage::~MVCCStorage() {
  */
 
 
-uint64 MVCCStorage::GetBeginTimestamp(Version * v, int my_id, Timestamp & ts) {
+uint64 MVCCStorage::GetBeginTimestamp(Version * v, uint64 my_id, Timestamp & ts) {
   // What if ts.txn has committed and replaced itself?
   // This requires that the txn keeps its pointer in the Txn field of the TS
   Txn * txn_p = (Txn*) ts.txn;
-  int status = txn_p->GetStatus();
+  int status = txn_p->Status();
   uint64 id = txn_p->GetStartID();
 
   if (status == ACTIVE) {
@@ -92,15 +92,15 @@ uint64 MVCCStorage::GetBeginTimestamp(Version * v, int my_id, Timestamp & ts) {
   else if (status == ABORTED) {
     return INF_INT;
   }
+  return INF_INT;
 
 }
 
-uint64 MVCCStorage::GetEndTimestamp(Version * v, int my_id, Timestamp & ts) {
+uint64 MVCCStorage::GetEndTimestamp(Version * v, uint64 my_id, Timestamp & ts) {
   // What if ts.txn has committed and replaced itself?
   // This requires that the txn keeps its pointer in the Txn field of the TS
   Txn * txn_p = (Txn*) ts.txn;
   TxnStatus status = txn_p->Status();
-  uint64 id = txn_p->GetStartID();
 
   if (status == ACTIVE) {
       return INF_INT;
@@ -111,6 +111,7 @@ uint64 MVCCStorage::GetEndTimestamp(Version * v, int my_id, Timestamp & ts) {
   else if (status == ABORTED) {
     return INF_INT;
   }
+  return INF_INT;
 
 }
 
@@ -126,21 +127,21 @@ bool MVCCStorage::Read(Key key, Version* result, uint64 txn_unique_id) {
       it != data_versions_p->end(); ++it) {
 
       // Case 2:
-      if ((*it)->begin_id_.edit_bit) {
+      if (*(*it)->begin_id_.edit_bit == 1) {
         begin_ts = GetBeginTimestamp(*it, txn_unique_id, (*it)->begin_id_);
-        if (!(*it)->end_id_.edit_bit) {
+        if (!(*(*it)->end_id_.edit_bit == 1)) {
           end_ts = (*it)->end_id_.timestamp;
         }
         // Case 3:
         else {
-          end_ts = GetEndTimestamp(*it, txn_unique_id);
+          end_ts = GetEndTimestamp(*it, txn_unique_id, (*it)->end_id_);
         }
       }
       else {
         begin_ts = (*it)->begin_id_.timestamp;
         // Case 3:
-        if ((*it)->end_id_.edit_bit) {
-          end_ts = GetEndTimestamp(*it, txn_unique_id);
+        if (*(*it)->end_id_.edit_bit == 1) {
+          end_ts = GetEndTimestamp(*it, txn_unique_id, (*it)->end_id_);
         }
         // Case 1:
         else {
@@ -170,7 +171,7 @@ bool MVCCStorage::Read(Key key, Version* result, uint64 txn_unique_id) {
 
 // TODO: Change the end timestamp of old version, flip the bit, change
 // the begin timsteamp of new version and flip bit.
-void PutEndTimestamp(Version * old_version, Version * new_version) {
+void MVCCStorage::PutEndTimestamp(Version * old_version, Version * new_version) {
 
 }
 
@@ -188,9 +189,11 @@ bool MVCCStorage::CheckWrite(Key key, Version* read_version, Txn* current_txn) {
     // We leave the timestamp in the front->end_id_.timestamp as INF_INT
     return true;
   }
-  else if (front->mutex_.Lock()) {
-    if (front->end_id.txn && front->end_id_.txn->Status() == ABORTED) {
-      front->end_id_.txn = current_txn;
+  else {
+    front->mutex_.Lock();
+    Txn* old_txn = (Txn*)front->end_id_.txn;
+    if (old_txn && old_txn->Status() == ABORTED) {
+      front->end_id_.txn = (void*) current_txn;
       front->mutex_.Unlock();
       return true;
     }

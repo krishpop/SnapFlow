@@ -156,7 +156,7 @@ void TxnProcessor::GetReads(Txn* txn) {
   for (set<Key>::iterator it = txn->readset_.begin();
      it != txn->readset_.end(); ++it) {
 
-    Version *result;
+    Version *result = NULL;
     if (storage_->Read(*it, result, txn->unique_id_)) {
       txn->reads_[*it] = result;
     }
@@ -169,7 +169,7 @@ bool TxnProcessor::CheckWrites(Txn* txn) {
   for (set<Key>::iterator it = txn->writeset_.begin();
      it != txn->writeset_.end(); ++it) {
 
-    Version *result;
+    Version *result = NULL;
     if (storage_->Read(*it, result, txn->unique_id_)) {
       txn->reads_[*it] = result;
 
@@ -184,7 +184,7 @@ bool TxnProcessor::CheckWrites(Txn* txn) {
 
 void TxnProcessor::FinishWrites(Txn* txn) {
 
-  for (unordered_map<Key, Version*>::iterator it = txn->writes_.begin();
+  for (map<Key, Version*>::iterator it = txn->writes_.begin();
      it != txn->writes_.end(); ++it) {
 
     // first is pointer to version, 2nd is txn
@@ -196,11 +196,11 @@ void TxnProcessor::FinishWrites(Txn* txn) {
 
 void TxnProcessor::PutEndTimestamps(Txn* txn) {
 
-  for (unordered_map<Key, Version*>::iterator it = txn->writes_.begin();
+  for (map<Key, Version*>::iterator it = txn->writes_.begin();
      it != txn->writes_.end(); ++it) {
 
     // first is the old version, 2nd is new version
-    storage_->PutEndTimestamp(reads_[it->first], writes_[it->first]);
+    storage_->PutEndTimestamp(txn->reads_[it->first], txn->writes_[it->first]);
 
   }
 
@@ -227,6 +227,9 @@ void TxnProcessor::SnapshotExecuteTxn(Txn* txn) {
 
   if (txn->Status() == COMMITTED){
     PutEndTimestamps(txn);
+  }
+  else if(txn->Status() == ABORTED) {
+
   }
 
 

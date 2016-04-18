@@ -41,9 +41,9 @@ class MVCCStorage {
   // Unlock the version_list of key
   void Unlock(Key key);
 
-  uint64 GetBeginTimestamp(Version * v, int my_id, Timestamp&);
+  uint64 GetBeginTimestamp(Version * v, uint64 my_id, Timestamp&);
 
-  uint64 GetEndTimestamp(Version * v, int my_id, Timestamp&);
+  uint64 GetEndTimestamp(Version * v, uint64 my_id, Timestamp&);
 
   void PutEndTimestamp(Version * old_version, Version * new_version);
 

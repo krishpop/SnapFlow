@@ -1,7 +1,7 @@
 // Author: Alexander Thomson (thomson@cs.yale.edu)
 
 #include "txn/txn.h"
-
+uint64 INF_INT = std::numeric_limits<uint64>::max();
 bool Txn::Read(const Key& key, Value * value) {
   // Check that key is in readset/writeset.
   if (readset_.count(key) == 0 && writeset_.count(key) == 0)

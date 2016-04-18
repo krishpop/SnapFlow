@@ -98,7 +98,7 @@ class TxnProcessor {
   StaticThreadPool tp_;
 
   // Data storage used for all modes.
-  Storage* storage_;
+  MVCCStorage* storage_;
 
   // Next valid unique_id, and a mutex to guard incoming txn requests.
   int next_unique_id_;

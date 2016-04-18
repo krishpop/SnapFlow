@@ -14,7 +14,8 @@
 using std::map;
 using std::set;
 using std::vector;
-
+// The upper limit for ints.
+extern uint64 INF_INT;
 // Txns can have five distinct status values:
 enum TxnStatus {
   INCOMPLETE = 0,   // Not yet executed
