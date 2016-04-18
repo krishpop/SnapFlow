@@ -14,7 +14,7 @@
 class Noop : public Txn {
  public:
   Noop() {}
-  virtual void Run() { COMMIT; }
+  virtual void Run() { }//COMMIT; }
 
   Noop* clone() const {             // Virtual constructor (copying)
     Noop* clone = new Noop();
@@ -45,7 +45,7 @@ class Expect : public Txn {
         ABORT;
       }
     }
-    COMMIT;
+    //COMMIT;
   }
 
  private:
@@ -67,9 +67,11 @@ class Put : public Txn {
   }
 
   virtual void Run() {
-    for (map<Key, Value>::iterator it = m_.begin(); it != m_.end(); ++it)
-      Write(it->first, it->second);
-    COMMIT;
+    for (map<Key, Value>::iterator it = m_.begin(); it != m_.end(); ++it) {
+      Version * to_insert = new Version;
+      Write(it->first, it->second, to_insert);
+    }
+    //COMMIT;
   }
 
  private:
@@ -129,9 +131,10 @@ class RMW : public Txn {
     // Increment length of everything in writeset.
     for (set<Key>::iterator it = writeset_.begin(); it != writeset_.end();
          ++it) {
+      Version * to_insert = new Version;
       result = 0;
       Read(*it, &result);
-      Write(*it, result + 1);
+      Write(*it, result + 1, to_insert);
     }
 
     // Run while loop to simulate the txn logic(duration is time_).

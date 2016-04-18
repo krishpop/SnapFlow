@@ -116,7 +116,7 @@ uint64 MVCCStorage::GetEndTimestamp(Version * v, uint64 my_id, Timestamp & ts) {
 }
 
 
-bool MVCCStorage::Read(Key key, Version* result, uint64 txn_unique_id) {
+bool MVCCStorage::Read(Key key, Version** result, uint64 txn_unique_id) {
 
   if (mvcc_data_.count(key)) {
     deque<Version*> * data_versions_p =  mvcc_data_[key];
@@ -160,7 +160,8 @@ bool MVCCStorage::Read(Key key, Version* result, uint64 txn_unique_id) {
       return false;
     }
     else {
-      result = right_version;
+      *result = right_version;
+      return true;
     }
   }
   else {
@@ -171,7 +172,12 @@ bool MVCCStorage::Read(Key key, Version* result, uint64 txn_unique_id) {
 
 // TODO: Change the end timestamp of old version, flip the bit, change
 // the begin timsteamp of new version and flip bit.
-void MVCCStorage::PutEndTimestamp(Version * old_version, Version * new_version) {
+void MVCCStorage::PutEndTimestamp(Version * old_version, Version * new_version, uint64 ts) {
+  old_version->end_id_.timestamp = ts;
+  new_version->begin_id_.timestamp = ts;
+
+  --old_version->end_id_.edit_bit;
+  --new_version->begin_id_.edit_bit;
 
 }
 
@@ -180,7 +186,7 @@ bool MVCCStorage::CheckWrite(Key key, Version* read_version, Txn* current_txn) {
   deque<Version*> * data_p = mvcc_data_[key];
   Version * front = data_p->front();
 
-  // Need to check read_version with front?
+  // TODO: Need to check read_version with front?
 
   // mutex locks critical section of acquiring write priviledge
   int old_value = 0;

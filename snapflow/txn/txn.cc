@@ -8,7 +8,7 @@ bool Txn::Read(const Key& key, Value * value) {
     DIE("Invalid read (key not in readset or writeset).");
 
   // Reads have no effect if we have already aborted or committed.
-  if (status_ != INCOMPLETE)
+  if (status_ != INCOMPLETE && status_ != ACTIVE)
     return false;
 
   // If we have previously written to key, then we read the newest local
@@ -28,16 +28,15 @@ bool Txn::Read(const Key& key, Value * value) {
   }
 }
 
-void Txn::Write(const Key& key, const Value& value) {
+void Txn::Write(const Key& key, const Value& value, Version * to_insert) {
   // Check that key is in writeset.
   if (writeset_.count(key) == 0)
     DIE("Invalid write to key " << key << " (writeset).");
 
   // Writes have no effect if we have already aborted or committed.
-  if (status_ != INCOMPLETE)
+  if (status_ != INCOMPLETE && status_ != ACTIVE)
     return;
 
-  Version * to_insert = new Version;
   Timestamp begin_ts = Timestamp{0, this, 1};
   Timestamp end_ts = Timestamp{INF_INT, NULL, 0};
 

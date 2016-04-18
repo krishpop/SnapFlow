@@ -84,14 +84,14 @@ class Txn {
   // Requires: key appears in writeset
   //
   // Note: Can ONLY be called from inside the 'Execute()' function.
-  void Write(const Key& key, const Value& value);
+  void Write(const Key& key, const Value& value, Version*);
 
   // Macro to be used inside 'Execute()' function when deciding to COMMIT.
   //
   // Note: Can ONLY be called from inside the 'Execute()' function.
   #define COMMIT \
     do { \
-      status_ = COMPLETED_C; \
+      status_ = COMMITTED; \
       return; \
     } while (0)
 
@@ -100,7 +100,7 @@ class Txn {
   // Note: Can ONLY be called from inside the 'Execute()' function.
   #define ABORT \
     do { \
-      status_ = COMPLETED_A; \
+      status_ = ABORTED; \
       return; \
     } while (0)
 

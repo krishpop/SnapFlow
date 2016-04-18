@@ -23,7 +23,7 @@ class MVCCStorage {
   // If there exists a record for the specified key, sets '*result' equal to
   // the value associated with the key and returns true, else returns false;
   // The third parameter is the txn_unique_id(txn timestamp), which is used for MVCC.
-  bool Read(Key key, Version* result, uint64 txn_unique_id = 0);
+  bool Read(Key key, Version** result, uint64 txn_unique_id = 0);
 
   // Check whether apply or abort the write
   bool CheckWrite(Key key, Version* read_version, Txn* current_txn);
@@ -45,7 +45,7 @@ class MVCCStorage {
 
   uint64 GetEndTimestamp(Version * v, uint64 my_id, Timestamp&);
 
-  void PutEndTimestamp(Version * old_version, Version * new_version);
+  void PutEndTimestamp(Version *, Version *, uint64);
 
   ~MVCCStorage();
 
