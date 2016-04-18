@@ -227,9 +227,11 @@ void TxnProcessor::SnapshotExecuteTxn(Txn* txn) {
 
   if (txn->Status() == COMMITTED){
     PutEndTimestamps(txn);
+    txn_results_.Push(txn);
   }
   else if(txn->Status() == ABORTED) {
-
+    //TODO: cleanup txn
+    txn_results_.Push(txn);
   }
 
 
