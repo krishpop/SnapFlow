@@ -36,6 +36,7 @@ struct Version {
   Value value_;      // The value of this version
   Timestamp begin_id_; // The timestamp of the earliest possible transaction to read/write this version
   Timestamp end_id_; // Timestamp of the latest possible transaction to read/write this version
+  Mutex mutex_; // Mutex for setting txn in version end_id_ to txn that is overwriting
 };
 
 class Txn {

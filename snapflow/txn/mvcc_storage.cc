@@ -7,8 +7,8 @@
 void MVCCStorage::InitStorage() {
   for (int i = 0; i < 1000000;i++) {
     mvcc_data_[i] = new deque<Version*>();
-    Timestamp begin_ts = Timestamp{ 0, NULL, 0 };
-    Timestamp end_ts = Timestamp{ INF_INT, NULL, 0 };
+    Timestamp begin_ts = Timestamp{ 0, NULL, 0, 0 };
+    Timestamp end_ts = Timestamp{ INF_INT, NULL, 0, 0 };
     Version* to_insert = new Version;
     to_insert->value_ = 0;
     to_insert->begin_id_ = begin_ts;
@@ -182,21 +182,22 @@ bool MVCCStorage::CheckWrite(Key key, Version* read_version, Txn* current_txn) {
   // Need to check read_version with front?
 
   // mutex locks critical section of acquiring write priviledge
-  Txn * old_txn = (Txn*) front->end_id_.txn;
   int old_value = 0;
   if (front->end_id_.edit_bit.CAS(&old_value, 1)) {
     front->end_id_.txn = current_txn;
     // We leave the timestamp in the front->end_id_.timestamp as INF_INT
     return true;
-  } 
-  else if (old_txn && old_txn->Status() == ABORTED) {
-      if (old_txn.CAS(&old_txn, current_txn)) {
-        
-      }
-    Timestamp end_ts = Timestamp{ current_txn->begin_id_, current_txn, 1 };
-    front->txn = current_txn;
-    front->end_id_ = end_ts;
-    return true;
+  }
+  else if (front->mutex_.Lock()) {
+    if (front->end_id.txn && front->end_id_.txn->Status() == ABORTED) {
+      front->end_id_.txn = current_txn;
+      front->mutex_.Unlock();
+      return true;
+    }
+    else {
+      front->mutex_.Unlock();
+      return false;
+    }
   }
   return false;
 }
