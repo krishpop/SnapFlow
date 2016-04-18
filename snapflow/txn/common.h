@@ -12,6 +12,8 @@
 #include <iostream>
 #include <string>
 #include <utility>
+#include <limits>
+
 
 using std::string;
 
@@ -43,6 +45,9 @@ typedef uint64_t uint64;
 // Key and value types
 typedef uint64 Key;
 typedef uint64 Value;
+
+// The upper limit for ints.
+uint64 INF_INT = std::numeric_limits<uint64>::max();
 
 // Returns the number of seconds since midnight according to local system time,
 // to the nearest microsecond.

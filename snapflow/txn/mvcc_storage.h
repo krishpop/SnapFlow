@@ -3,55 +3,57 @@
 #ifndef _MVCC_STORAGE_H_
 #define _MVCC_STORAGE_H_
 
-#include "txn/storage.h"
-#include "limits.h"
+#include <limits.h>
+#include <tr1/unordered_map>
+#include <deque>
+#include <map>
 
+#include "txn/common.h"
+#include "txn/txn.h"
+#include "utils/mutex.h"
 
+using std::tr1::unordered_map;
+using std::deque;
+using std::map;
 
-// The upper limit for ints.
-int INF_INT = std::numeric_limits<int>::max();
 
 // MVCC storage
-class MVCCStorage : public Storage {
+class MVCCStorage {
  public:
   // If there exists a record for the specified key, sets '*result' equal to
   // the value associated with the key and returns true, else returns false;
   // The third parameter is the txn_unique_id(txn timestamp), which is used for MVCC.
-  virtual bool Read(Key key, Value* result, int txn_unique_id = 0);
+  bool Read(Key key, Version* result, uint64 txn_unique_id = 0);
 
   // Check whether apply or abort the write
-  virtual bool CheckWrite(Key key, Version* read_version, txn* current_txn);
+  bool CheckWrite(Key key, Version* read_version, Txn* current_txn);
 
   // Inserts a new version with key and value
   // The third parameter is the txn_unique_id(txn timestamp), which is used for MVCC.
-  virtual void FinishWrite(Key key, Value value, txn* current_txn);
-
-  // Returns the timestamp at which the record with the specified key was last
-  // updated (returns 0 if the record has never been updated). This is used for OCC.
-  virtual double Timestamp(Key key) {return 0;}
+  void FinishWrite(Key key, Version* new_version);
 
   // Init storage
-  virtual void InitStorage();
+  void InitStorage();
 
   // Lock the version_list of key
-  virtual void Lock(Key key);
+  void Lock(Key key);
 
   // Unlock the version_list of key
-  virtual void Unlock(Key key);
+  void Unlock(Key key);
 
-  int GetBeginTimestamp(Version * v, int my_id, TxnTable * t);
+  uint64 GetBeginTimestamp(Version * v, int my_id, Timestamp&);
 
-  int GetEndTimestamp(Version * v, int my_id);
+  uint64 GetEndTimestamp(Version * v, int my_id, Timestamp&);
 
   void PutEndTimestamp(Version * old_version, Version * new_version);
 
-  virtual ~MVCCStorage();
+  ~MVCCStorage();
 
  private:
 
-  void MVCCStorage::SetTS(SpeculativeTS & ts, int t, bool mode);
+  void SetTS(Timestamp & ts, int t, bool mode);
 
-  void MVCCStorage::InitTS(SpeculativeTS & ts)
+  void InitTS(Timestamp & ts);
 
   friend class TxnProcessor;
 
@@ -59,7 +61,7 @@ class MVCCStorage : public Storage {
   unordered_map<Key, deque<Version*>*> mvcc_data_;
 
   // Mutexs for each key
-  unordered_map<Key, Atomic<int>> write_access_table_;
+  //unordered_map<Key, Atomic<int>> write_access_table_;
 
 
 };

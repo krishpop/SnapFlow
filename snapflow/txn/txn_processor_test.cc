@@ -47,15 +47,10 @@ TEST(PutTest) {
   EXPECT_EQ(ABORTED, t->Status());
   delete t;
 
-<<<<<<< HEAD
   p.NewTxnRequest(new Expect(o));  // Should abort (wrong value for key)
   t = p.GetTxnResult();
   EXPECT_EQ(ABORTED, t->Status());
   delete t;
-=======
-        // Create TxnProcessor in next mode.
-        TxnProcessor* p = new TxnProcessor(mode, t);
->>>>>>> david
 
   p.NewTxnRequest(new Expect(q));  // Should commit
   t = p.GetTxnResult();

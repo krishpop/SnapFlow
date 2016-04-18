@@ -7,16 +7,13 @@
 void MVCCStorage::InitStorage() {
   for (int i = 0; i < 1000000;i++) {
     mvcc_data_[i] = new deque<Version*>();
-    TimeStamp begin_ts = TimeStamp{ 0, NULL, 0 };
-    TimeStamp end_ts = TimeStamp{ INF_INT, NULL, 0 };
+    Timestamp begin_ts = Timestamp{ 0, NULL, 0 };
+    Timestamp end_ts = Timestamp{ INF_INT, NULL, 0 };
     Version* to_insert = new Version;
     to_insert->value_ = 0;
     to_insert->begin_id_ = begin_ts;
     to_insert->end_id_ = end_ts;
     mvcc_data_[i]->push_front(to_insert);
-    // do we need key_mutex?
-    Mutex* key_mutex = new Mutex();
-    mutexs_[i] = key_mutex;
   }
 }
 
@@ -29,23 +26,23 @@ MVCCStorage::~MVCCStorage() {
 
   mvcc_data_.clear();
 
-  for (unordered_map<Key, Mutex*>::iterator it = mutexs_.begin();
-       it != mutexs_.end(); ++it) {
-    delete it->second;
-  }
+  // for (unordered_map<Key, Mutex*>::iterator it = mutexs_.begin();
+  //      it != mutexs_.end(); ++it) {
+  //   delete it->second;
+  // }
 
-  mutexs_.clear();
+  // mutexs_.clear();
 }
 
 // Lock the key to protect its version_list. Remember to lock the key when you read/update the version_list
-void MVCCStorage::Lock(Key key) {
-  mutexs_[key]->Lock();
-}
+// void MVCCStorage::Lock(Key key) {
+//   mutexs_[key]->Lock();
+// }
 
-// Unlock the key.
-void MVCCStorage::Unlock(Key key) {
-  mutexs_[key]->Unlock();
-}
+// // Unlock the key.
+// void MVCCStorage::Unlock(Key key) {
+//   mutexs_[key]->Unlock();
+// }
 
 // MVCC Read
 /*Read for SI and SSI is more complex. Only certain versions are visible
@@ -71,7 +68,7 @@ void MVCCStorage::Unlock(Key key) {
  */
 
 
-uint64 MVCCStorage::GetBeginTimestamp(Version * v, int my_id, TimeStamp & ts) {
+uint64 MVCCStorage::GetBeginTimestamp(Version * v, int my_id, Timestamp & ts) {
   // What if ts.txn has committed and replaced itself?
   // This requires that the txn keeps its pointer in the Txn field of the TS
   Txn * txn_p = (Txn*) ts.txn;
@@ -98,7 +95,7 @@ uint64 MVCCStorage::GetBeginTimestamp(Version * v, int my_id, TimeStamp & ts) {
 
 }
 
-uint64 MVCCStorage::GetEndTimestamp(Version * v, int my_id, TimeStamp & ts) {
+uint64 MVCCStorage::GetEndTimestamp(Version * v, int my_id, Timestamp & ts) {
   // What if ts.txn has committed and replaced itself?
   // This requires that the txn keeps its pointer in the Txn field of the TS
   Txn * txn_p = (Txn*) ts.txn;
@@ -117,19 +114,8 @@ uint64 MVCCStorage::GetEndTimestamp(Version * v, int my_id, TimeStamp & ts) {
 
 }
 
-void MVCCStorage::SetTS(TimeStamp & ts, int t, Txn * t2, Atomic<int> eb) {
-  ts.timestamp = t;
-  ts.txn = t2;
-  ts.edit_bit = eb;
-}
 
-void MVCCStorage::InitTS(TimeStamp ts) {
-  ts.timestamp = -1;
-  ts.txn = NULL;
-  ts.edit_bit = false;
-}
-
-bool MVCCStorage::Read(Key key, Version* result, int txn_unique_id) {
+bool MVCCStorage::Read(Key key, Version* result, uint64 txn_unique_id) {
 
   if (mvcc_data_.count(key)) {
     deque<Version*> * data_versions_p =  mvcc_data_[key];
@@ -189,15 +175,15 @@ void PutEndTimestamp(Version * old_version, Version * new_version) {
 }
 
 // MVCC CheckWrite returns true if Write without conflict
-bool MVCCStorage::CheckWrite(Key key, Version* read_version, txn* current_txn) {
+bool MVCCStorage::CheckWrite(Key key, Version* read_version, Txn* current_txn) {
   deque<Version*> * data_p = mvcc_data_[key];
-  deque<Version*>::iterator front = data_p->front();
+  Version * front = data_p->front();
 
-    // mutex locks critical section of acquiring write priviledge
-  if (CAS(front->end_id_.edit_bit)) {
-    return true;
-  } else if (front->txn->Status() == ABORTED) {
-    TimeStamp end_ts = TimeStamp{ current_txn->begin_id_, current_txn, 1 };
+  // Need to check read_version with front?
+
+  // mutex locks critical section of acquiring write priviledge
+  if (CAS(front->end_id_.edit_bit) || (front->end_id_.txn && front->end_id_.txn->Status() == ABORTED)) {
+    Timestamp end_ts = Timestamp{ current_txn->begin_id_, current_txn, 1 };
     front->txn = current_txn;
     front->end_id_ = end_ts;
     return true;

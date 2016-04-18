@@ -144,7 +144,8 @@ class RMW : public Txn {
       }
     }
     
-    COMMIT;
+    // For SI we do not want to set the status at txn execution time.
+    //COMMIT;
   }
 
  private:

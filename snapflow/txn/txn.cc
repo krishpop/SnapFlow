@@ -11,12 +11,19 @@ bool Txn::Read(const Key& key, Value * value) {
   if (status_ != INCOMPLETE)
     return false;
 
+  // If we have previously written to key, then we read the newest local
+  // version.
+  if (writes_.count(key)) {
+    *value = writes_[key]->value_;
+    return true;
+  }
   // 'reads_' has already been populated by TxnProcessor, so it should contain
   // the target value iff the record appears in the database.
-  if (reads_.count(key)) {
+  else if (reads_.count(key)) {
     *value = reads_[key]->value_;
     return true;
-  } else {
+  } 
+  else {
     return false;
   }
 }
@@ -57,8 +64,9 @@ void Txn::CheckReadWriteSets() {
 void Txn::CopyTxnInternals(Txn* txn) const {
   txn->readset_ = set<Key>(this->readset_);
   txn->writeset_ = set<Key>(this->writeset_);
-  txn->reads_ = map<Key, Value>(this->reads_);
-  txn->writes_ = map<Key, Value>(this->writes_);
+  txn->reads_ = map<Key, Version*>(this->reads_);
+  txn->writes_ = map<Key, Version*>(this->writes_);
   txn->status_ = this->status_;
   txn->unique_id_ = this->unique_id_;
+  txn->end_unique_id_ = this->end_unique_id_;
 }

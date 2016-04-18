@@ -13,14 +13,9 @@
 TxnProcessor::TxnProcessor(CCMode mode)
     : mode_(mode), tp_(THREAD_COUNT), next_unique_id_(1) {
   
-  // Create the storage
-  storage_ = new Storage();
   
-  if (mode_ == SERIAL) {
-    storage_ = new Storage();
-  } else {
-    storage_ = new MVCCStorage();
-  }
+
+  storage_ = new MVCCStorage();
   storage_->InitStorage();
 
   // Start 'RunScheduler()' running.
@@ -69,72 +64,72 @@ Txn* TxnProcessor::GetTxnResult() {
 
 void TxnProcessor::RunScheduler() {
   switch (mode_) {
-    case SERIAL:             RunSerialScheduler(); break;
     case SI:                 RunSnapshotScheduler(); break;
     case NEW:                RunNewScheduler();
   }
 }
 
-void TxnProcessor::RunSerialScheduler() {
-  Txn* txn;
-  while (tp_.Active()) {
-    // Get next txn request.
-    if (txn_requests_.Pop(&txn)) {
-      // Execute txn.
-      ExecuteTxn(txn);
+// void TxnProcessor::RunSerialScheduler() {
+//   Txn* txn;
+//   while (tp_.Active()) {
+//     // Get next txn request.
+//     if (txn_requests_.Pop(&txn)) {
+//       // Execute txn.
+//       ExecuteTxn(txn);
 
-      // Commit/abort txn according to program logic's commit/abort decision.
-      if (txn->Status() == COMPLETED_C) {
-        ApplyWrites(txn);
-        txn->status_ = COMMITTED;
-      } else if (txn->Status() == COMPLETED_A) {
-        txn->status_ = ABORTED;
-      } else {
-        // Invalid TxnStatus!
-        DIE("Completed Txn has invalid TxnStatus: " << txn->Status());
-      }
+//       // Commit/abort txn according to program logic's commit/abort decision.
+//       if (txn->Status() == COMPLETED_C) {
+//         //ApplyWrites(txn);
+//         txn->status_ = COMMITTED;
+//       } else if (txn->Status() == COMPLETED_A) {
+//         txn->status_ = ABORTED;
+//       } else {
+//         // Invalid TxnStatus!
+//         DIE("Completed Txn has invalid TxnStatus: " << txn->Status());
+//       }
 
-      // Return result to client.
-      txn_results_.Push(txn);
-    }
-  }
-}
+//       // Return result to client.
+//       txn_results_.Push(txn);
+//     }
+//   }
+// }
 
 
-void TxnProcessor::ExecuteTxn(Txn* txn) {
+// void TxnProcessor::ExecuteTxn(Txn* txn) {
 
-  // Read everything in from readset.
-  for (set<Key>::iterator it = txn->readset_.begin();
-       it != txn->readset_.end(); ++it) {
-    // Save each read result iff record exists in storage.
-    Value result;
-    if (storage_->Read(*it, &result))
-      txn->reads_[*it] = result;
-  }
+//   // Read everything in from readset.
+//   for (set<Key>::iterator it = txn->readset_.begin();
+//        it != txn->readset_.end(); ++it) {
+//     // Save each read result iff record exists in storage.
+//     Version* result;
+//     if (storage_->Read(*it, result))
+//       txn->reads_[*it] = result;
+//   }
 
-  // Also read everything in from writeset.
-  for (set<Key>::iterator it = txn->writeset_.begin();
-       it != txn->writeset_.end(); ++it) {
-    // Save each read result iff record exists in storage.
-    Value result;
-    if (storage_->Read(*it, &result))
-      txn->reads_[*it] = result;
-  }
+//   // Also read everything in from writeset.
+//   for (set<Key>::iterator it = txn->writeset_.begin();
+//        it != txn->writeset_.end(); ++it) {
+//     // Save each read result iff record exists in storage.
+//     Version* result;
+//     if (storage_->Read(*it, result))
+//       txn->reads_[*it] = result;
+//   }
 
-  // Execute txn's program logic.
-  txn->Run();
+//   // Execute txn's program logic.
+//   txn->Run();
 
-  // Hand the txn back to the RunScheduler thread.
-  completed_txns_.Push(txn);
-}
+//   // Hand the txn back to the RunScheduler thread.
+//   completed_txns_.Push(txn);
+// }
 
-void TxnProcessor::ApplyWrites(Txn* txn) {
-  // Write buffered writes out to storage.
-  for (map<Key, Value>::iterator it = txn->writes_.begin();
-       it != txn->writes_.end(); ++it) {
-    storage_->Write(it->first, it->second, txn->unique_id_);
-  }
-}
+// // Need to delete
+// void TxnProcessor::ApplyWrites(Txn* txn) {
+//   // Write buffered writes out to storage.
+//   for (map<Key, Version*>::iterator it = txn->writes_.begin();
+//        it != txn->writes_.end(); ++it) {
+//     //storage_->Write(it->first, it->second, txn->unique_id_);
+//   }
+// }
 
 /////////////////////// START OF SNAPSHOT EXECUTION ///////////////////////////
 

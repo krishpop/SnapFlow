@@ -10,7 +10,7 @@
 #include <string>
 
 #include "txn/common.h"
-#include "txn/storage.h"
+#include "txn/mvcc_storage.h"
 #include "txn/txn.h"
 #include "utils/atomic.h"
 #include "utils/static_thread_pool.h"
@@ -23,9 +23,8 @@ using std::map;
 using std::string;
 
 enum CCMode {
-  SERIAL = 0,
-  SI = 1,                  // Snapshot isolation (by Larson)
-  NEW = 2                // Our new control flow algo
+  SI = 0,                  // Snapshot isolation (by Larson)
+  NEW = 1                // Our new control flow algo
 };
 
 

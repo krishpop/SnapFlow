@@ -19,11 +19,13 @@ using std::vector;
 enum TxnStatus {
   INCOMPLETE = 0,   // Not yet executed
   ACTIVE = 1,
-  COMMITTED = 2,    // Committed
-  ABORTED = 3,      // Aborted
+  COMPLETED_C = 2,
+  COMPLETED_A = 3,
+  COMMITTED = 4,    // Committed
+  ABORTED = 5      // Aborted
 };
 
-struct TimeStamp {
+struct Timestamp {
   uint64 timestamp;
   void* txn;
   Atomic<int> edit_bit;
@@ -32,8 +34,8 @@ struct TimeStamp {
 // MVCC 'version' structure
 struct Version {
   Value value_;      // The value of this version
-  TimeStamp begin_id_; // The timestamp of the earliest possible transaction to read/write this version
-  TimeStamp end_id_; // Timestamp of the latest possible transaction to read/write this version
+  Timestamp begin_id_; // The timestamp of the earliest possible transaction to read/write this version
+  Timestamp end_id_; // Timestamp of the latest possible transaction to read/write this version
 };
 
 class Txn {
