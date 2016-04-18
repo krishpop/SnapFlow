@@ -182,7 +182,17 @@ bool MVCCStorage::CheckWrite(Key key, Version* read_version, Txn* current_txn) {
   // Need to check read_version with front?
 
   // mutex locks critical section of acquiring write priviledge
-  if (CAS(front->end_id_.edit_bit) || (front->end_id_.txn && front->end_id_.txn->Status() == ABORTED)) {
+  Txn * old_txn = (Txn*) front->end_id_.txn;
+  int old_value = 0;
+  if (front->end_id_.edit_bit.CAS(&old_value, 1)) {
+    front->end_id_.txn = current_txn;
+    // We leave the timestamp in the front->end_id_.timestamp as INF_INT
+    return true;
+  } 
+  else if (old_txn && old_txn->Status() == ABORTED) {
+      if (old_txn.CAS(&old_txn, current_txn)) {
+        
+      }
     Timestamp end_ts = Timestamp{ current_txn->begin_id_, current_txn, 1 };
     front->txn = current_txn;
     front->end_id_ = end_ts;
