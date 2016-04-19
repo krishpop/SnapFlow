@@ -208,24 +208,20 @@ void TxnProcessor::PutEndTimestamps(Txn* txn) {
 
 void TxnProcessor::SnapshotExecuteTxn(Txn* txn) {
 
-  //printf("1\n");
   GetBeginTimestamp(txn);
-  //printf("2\n");
 
   GetReads(txn);
-  //printf("3\n");
 
   if (!CheckWrites(txn))
     txn->status_ = ABORTED;
-  //printf("4\n");
 
   if (txn->Status() == ACTIVE) {
     txn->Run();
-    //printf("4.5\n");
     if (txn->Status() != ABORTED) {
       FinishWrites(txn);
       GetEndTimestamp(txn);
-    } else {
+    }
+    else {
       txn->reads_.empty();
       txn->writes_.empty();
       txn->status_ = INCOMPLETE;
@@ -236,7 +232,6 @@ void TxnProcessor::SnapshotExecuteTxn(Txn* txn) {
   if (txn->Status() == COMMITTED){
     PutEndTimestamps(txn);
     txn_results_.Push(txn);
-  //printf("6\n");
 
   }
   else if(txn->Status() == ABORTED) {
@@ -249,7 +244,6 @@ void TxnProcessor::SnapshotExecuteTxn(Txn* txn) {
 
     //TODO: cleanup txn
     txn_results_.Push(txn);
-    //printf("7\n");
 
   }
 
