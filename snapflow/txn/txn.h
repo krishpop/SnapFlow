@@ -24,6 +24,7 @@ enum TxnStatus {
   COMPLETED_A = 3,
   COMMITTED = 4,    // Committed
   ABORTED = 5      // Aborted
+  // TODO add a PREPARING state?
 };
 
 struct Timestamp {

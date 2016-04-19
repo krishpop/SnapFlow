@@ -208,14 +208,16 @@ void TxnProcessor::PutEndTimestamps(Txn* txn) {
 
 void TxnProcessor::SnapshotExecuteTxn(Txn* txn) {
 
-
+  // Begin stage
   GetBeginTimestamp(txn);
 
+  // Normal execution stage
   GetReads(txn);
 
   if (!CheckWrites(txn))
     txn->status_ = ABORTED;
-
+  
+  // Preparing stage
   if (txn->Status() == ACTIVE) {
     txn->Run();
     if (txn->Status() != ABORTED) {
@@ -224,16 +226,21 @@ void TxnProcessor::SnapshotExecuteTxn(Txn* txn) {
     }
   }
     
-    
-    
-
+  // Postprocessing Phase
   if (txn->Status() == COMMITTED){
     PutEndTimestamps(txn);
     txn_results_.Push(txn);
   }
   else if(txn->Status() == ABORTED) {
     //TODO: cleanup txn
-    txn_results_.Push(txn);
+    // set begin field of its new versions to infinity 
+
+    // atomically attempts to set end field of old versions to infinity
+
+    txn->reads_.empty();
+    txn->writes_.empty();
+    // txn->status_ = INCOMPLETE;
+    txn_requests_.Push(txn);
   }
 
 
