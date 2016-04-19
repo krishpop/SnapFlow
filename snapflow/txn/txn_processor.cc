@@ -220,11 +220,6 @@ void TxnProcessor::SnapshotExecuteTxn(Txn* txn) {
     if (txn->Status() != ABORTED) {
       FinishWrites(txn);
       GetEndTimestamp(txn);
-    } else {
-      txn->reads_.empty();
-      txn->writes_.empty();
-      txn->status_ = INCOMPLETE;
-      txn_results_.Push(txn);
     }
     else {
       txn->reads_.empty();
