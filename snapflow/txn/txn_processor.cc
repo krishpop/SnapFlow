@@ -212,8 +212,9 @@ void TxnProcessor::SnapshotExecuteTxn(Txn* txn) {
 
   GetReads(txn);
 
-  if (!CheckWrites(txn))
+  if (!CheckWrites(txn)) {
     txn->status_ = ABORTED;
+  }
 
   if (txn->Status() == ACTIVE) {
     txn->Run();
@@ -222,9 +223,14 @@ void TxnProcessor::SnapshotExecuteTxn(Txn* txn) {
       GetEndTimestamp(txn);
     }
     else {
+      // txn aborted
+      // TODO: either copy in a new txn ptr or switch edit bits to timestamps before pushing to txn_requests
+      // txn_requests_.Push(txn);
+      //TODO: cleanup txn
+
       txn->reads_.empty();
       txn->writes_.empty();
-      txn->status_ = INCOMPLETE;
+      // txn->status_ = INCOMPLETE;
       txn_results_.Push(txn);
     }
   }
@@ -234,20 +240,6 @@ void TxnProcessor::SnapshotExecuteTxn(Txn* txn) {
     txn_results_.Push(txn);
 
   }
-  else if(txn->Status() == ABORTED) {
-
-    // txn->reads_.empty();
-    // txn->writes_.empty();
-    // txn->status_ = INCOMPLETE;
-    // TODO: either copy in a new txn ptr or switch edit bits to timestamps before pushing to txn_requests
-    // txn_requests_.Push(txn);
-
-    //TODO: cleanup txn
-    txn_results_.Push(txn);
-
-  }
-
-
 }
 
 
