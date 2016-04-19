@@ -100,6 +100,9 @@ uint64 MVCCStorage::GetEndTimestamp(Version * v, uint64 my_id, Timestamp & ts) {
   // What if ts.txn has committed and replaced itself?
   // This requires that the txn keeps its pointer in the Txn field of the TS
   Txn * txn_p = (Txn*) ts.txn;
+  // ADDED: TODO handle this better
+  if (!txn_p) 
+    return INF_INT;
   TxnStatus status = txn_p->Status();
 
   if (status == ACTIVE) {
@@ -129,12 +132,13 @@ bool MVCCStorage::Read(Key key, Version** result, uint64 txn_unique_id) {
       // Case 2:
       if (*(*it)->begin_id_.edit_bit == 1) {
         begin_ts = GetBeginTimestamp(*it, txn_unique_id, (*it)->begin_id_);
-        if (!(*(*it)->end_id_.edit_bit == 1)) {
-          end_ts = (*it)->end_id_.timestamp;
+        if ((*(*it)->end_id_.edit_bit == 1)) {
+          end_ts = GetEndTimestamp(*it, txn_unique_id, (*it)->end_id_);
+          //end_ts = (*it)->end_id_.timestamp;
         }
         // Case 3:
         else {
-          end_ts = GetEndTimestamp(*it, txn_unique_id, (*it)->end_id_);
+          end_ts = (*it)->end_id_.timestamp;
         }
       }
       else {

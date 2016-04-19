@@ -91,19 +91,18 @@ void Benchmark(const vector<LoadGen*>& lg) {
 
       // Record start time.
       double start = GetTime();
-      printf("WHASSUP\n");
       // Start specified number of txns running.
       for (int i = 0; i < active_txns; i++)
         p->NewTxnRequest(lg[exp]->NewTxn());
-      printf("YASSS\n");
       // Keep 100 active txns at all times for the first full second.
       while (GetTime() < start + 1) {
+        //printf("%i\n", txn_count);
         Txn* txn = p->GetTxnResult();
+        //printf("%i\n", txn_count);
         doneTxns.push_back(txn);
         txn_count++;
         p->NewTxnRequest(lg[exp]->NewTxn());
       }
-      printf("YASSS2\n");
       // Wait for all of them to finish.
       for (int i = 0; i < active_txns; i++) {
         Txn* txn = p->GetTxnResult();
@@ -215,7 +214,6 @@ int main(int argc, char** argv) {
   lg.push_back(new RMWLoadGen(5, 0, 1, 0.001));
   lg.push_back(new RMWLoadGen(5, 0, 1, 0.01));
 
-  printf("HEELOO\n");
 
   Benchmark(lg);
 
