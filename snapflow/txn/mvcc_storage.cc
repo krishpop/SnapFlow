@@ -5,25 +5,45 @@
 
 // Init the storage
 void MVCCStorage::InitStorage() {
+  mvcc_data_.push_back(InitTable()); // Table for checking
+  mvcc_data_.push_back(InitTable()); // Table for savings
+}
+
+// Init the table
+unordered_map<Key, deque<Version*>*> MVCCStorage::InitTable() {
+  unordered_map<Key, deque<Version*>*> table_;
+
   for (int i = 0; i < 1000000;i++) {
-    mvcc_data_[i] = new deque<Version*>();
+    table_[i] = new deque<Version*>();
     Timestamp begin_ts = Timestamp{ 0, NULL, 0};
     Timestamp end_ts = Timestamp{ INF_INT, NULL, 0};
+
     Version* to_insert = new Version;
     to_insert->value_ = 0;
     to_insert->begin_id_ = begin_ts;
     to_insert->end_id_ = end_ts;
-    mvcc_data_[i]->push_front(to_insert);
+
+    table_[i]->push_front(to_insert);
   }
+
+  return table_;
 }
 
 // Free memory.
 MVCCStorage::~MVCCStorage() {
-  for (unordered_map<Key, deque<Version*>*>::iterator it = mvcc_data_.begin();
-       it != mvcc_data_.end(); ++it) {
+  // clear checking table
+  for (unordered_map<Key, deque<Version*>*>::iterator it = mvcc_data_[CHECKING].begin();
+       it != mvcc_data_[CHECKING].end(); ++it) {
     delete it->second;
   }
 
+  // clear savings table
+  for (unordered_map<Key, deque<Version*>*>::iterator it = mvcc_data_[SAVINGS].begin();
+       it != mvcc_data_[SAVINGS].end(); ++it) {
+    delete it->second;
+  }
+
+  // clear storage
   mvcc_data_.clear();
 
   // for (unordered_map<Key, Mutex*>::iterator it = mutexs_.begin();
@@ -66,7 +86,6 @@ MVCCStorage::~MVCCStorage() {
  * status currently operating on the end_id_ of this version. If Active, then
  *
  */
-
 
 uint64 MVCCStorage::GetBeginTimestamp(Version * v, uint64 my_id, Timestamp & ts) {
   // What if ts.txn has committed and replaced itself?
@@ -119,10 +138,10 @@ uint64 MVCCStorage::GetEndTimestamp(Version * v, uint64 my_id, Timestamp & ts) {
 }
 
 
-bool MVCCStorage::Read(Key key, Version** result, uint64 txn_unique_id) {
+bool MVCCStorage::Read(Key key, Version** result, uint64 txn_unique_id, TableType tbl_type) {
 
-  if (mvcc_data_.count(key)) {
-    deque<Version*> * data_versions_p =  mvcc_data_[key];
+  if (mvcc_data_[tbl_type].count(key)) {
+    deque<Version*> * data_versions_p =  mvcc_data_[tbl_type][key];
     uint64 begin_ts, end_ts;
     // This works under the assumption that we have the deque sorted in decreasing order
     Version *right_version = NULL;
@@ -186,8 +205,8 @@ void MVCCStorage::PutEndTimestamp(Version * old_version, Version * new_version, 
 }
 
 // MVCC CheckWrite returns true if Write without conflict
-bool MVCCStorage::CheckWrite(Key key, Version* read_version, Txn* current_txn) {
-  deque<Version*> * data_p = mvcc_data_[key];
+bool MVCCStorage::CheckWrite(Key key, Version* read_version, Txn* current_txn, TableType tbl_type) {
+  deque<Version*> * data_p = mvcc_data_[tbl_type][key];
   Version * front = data_p->front();
 
   // TODO: Need to check read_version with front?
@@ -215,8 +234,8 @@ bool MVCCStorage::CheckWrite(Key key, Version* read_version, Txn* current_txn) {
   return false;
 }
 
-void MVCCStorage::FinishWrite(Key key, Version* new_version) {
-  deque<Version*> * data_p = mvcc_data_[key];
+void MVCCStorage::FinishWrite(Key key, Version* new_version, TableType tbl_type) {
+  deque<Version*> * data_p = mvcc_data_[tbl_type][key];
   data_p->push_front(new_version);
   return;
 }
