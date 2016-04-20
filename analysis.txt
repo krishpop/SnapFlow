@@ -1,0 +1,430 @@
+-------------------------------------------------------------------------------
+Part 5: ANALYSIS
+by Kshitijh Meelu
+-------------------------------------------------------------------------------
+
+1. CARPE DATUM 
+~~~~~~~~~~~~~~
+Below are my results from running the tests. Note that
+the four Lock Manager tests have passed. The values below are returned from the
+txn_processor_test.cc run:
+
+        			Average Transaction Duration
+        		0.1ms        	1ms        	10ms
+'Low contention' Read only (5 records)
+ Serial       9412.53        993.247        99.836    
+ Locking A    44819.6        5720.67        588.693    
+ Locking B    44229.5        5675.97        574.596    
+ OCC          44963.8        5858.53        608.634    
+ OCC-P        44487.7        5521.46        610.149    
+ MVCC         43341.3        5572.01        620.572    
+'Low contention' Read only (20 records) 
+ Serial       8238.41        978.267        99.6955    
+ Locking A    24863.6        5445.29        611.786    
+ Locking B    18014.4        5439.9         614.232    
+ OCC          35520.7        5457.23        577.273    
+ OCC-P        35803          5445.46        629.165    
+ MVCC         30634.9        5279        	582.724    
+'High contention' Read only (5 records)
+ Serial       9486.88        994.134        99.8799    
+ Locking A    32742.6        4130.41        508.17    
+ Locking B    42338.2        5667.47        623.465    
+ OCC          44897.8        5767.1        	578.433    
+ OCC-P        45013.8        5612.65        602.009    
+ MVCC         43870.3        5569.16        603.843    
+'High contention' Read only (20 records)
+ Serial       8452.88        980.965        99.7294    
+ Locking A    6430.68       1224.4        	131.133    
+ Locking B    16136.8       5382.65        	588.841    
+ OCC          36390        	5412.11        	598.872    
+ OCC-P        37848        	5511.3        	586.223    
+ MVCC         38738        	5560.84        	582.458    
+Low contention read-write (5 records)
+ Serial       9064.84        989.409        99.7927    
+ Locking A    43390.2        5474.89        595.338    
+ Locking B    42914.3        5640.37        593.145    
+ OCC          42280        	 5592.3         580.479    
+ OCC-P        42106.6        5531.98        621.847    
+ MVCC         34678.4        5549.14        578.912    
+Low contention read-write (10 records)
+ Serial       8393.12        980.125        99.6934    
+ Locking A    35140          5506.15        615.18    
+ Locking B    28787.1        5440.62        573.107    
+ OCC          37253.6        5477.42        596.838    
+ OCC-P        37727.6        5453.82        594.969    
+ MVCC         28525.4        5512.75        581.875    
+High contention read-write (1 records)
+ Serial       9699.05        996.234        99.9284    
+ Locking A    26661.6        3164.49        337.028    
+ Locking B    26143.4        3218.47        345.252    
+ OCC          24723.9        2370.11        253.687    
+ OCC-P        22882.8        2844.72        279.7    
+ MVCC         14361.9        1470.53        145.665    
+High contention read-write (5 records)
+ Serial       9232.48        990.937        99.8392    
+ Locking A    31662.3        4127.37        498.747    
+ Locking B    28650.3        4111.59        486.82    
+ OCC          22785.6        2320.2         248.346    
+ OCC-P        21773.5        2843.04        280.373    
+ MVCC         11965.8        1282.7         139.901    
+High contention read-write (10 records)
+ Serial       8607.14        983.531        99.7566    
+ Locking A    15644.3        2702.39        301.11    
+ Locking B    13472.6        2627.29        297.956    
+ OCC          11514.3        1287.11        131.422    
+ OCC-P        9630.35        1499.94        156.432    
+ MVCC         5954.73        764.447        75.4044    
+High contention mixed read only/read-write 
+ Serial       9432.81        1223.66        124.827    
+ Locking A    5991.99        1126.63        122.896    
+ Locking B    10059.3        3829.71        643.013    
+ OCC          21452.5        3073.55        315.396    
+ OCC-P        21520.7        3567.9         356.624    
+ MVCC         31131.9        6066        	747.904   
+
+
+2. SIMULATIONS ARE DOOMED TO SUCCEED
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+There are many disadvantages of running simulations, in general, some of which
+have been discussed in class.
+
+The first of these is the general inaccuracy of results. That is, simulations
+do not always 'simulate' real systems very well, and by performing a
+simulation, we increase the risk of missing extraneous factors that may affect
+the results. In the case of our transactions, we do not yet account for
+variable length transaction durations. Say, for example, that most transactions
+take 0.1 ms, but there is one --- or a few --- that take much, much longer. If
+we use the same equation we currently use to calculate throughput --- that is,
+take number of transactions completed, divided by total time to run all 100
+transactions --- this results in a very long total time, due to the few very
+long transactions, thus lowering througput. However, our txn_processor actually
+was fairly free, since the reason for the delay was not due to Locking
+acquisition, but instead one very long transaction run time. This case is not
+yet accounted for by the simulation.
+
+Moreover, simulations do not put a performance improvement in appropriate
+context. Specifically, the concurrency control mechanism may have solved a
+bottleneck that may not have been an global system bottleneck. That is to say,
+our optimization of a concurrency control system did not affect overall
+performance because there is separate part of our system that bottlenecks our
+concurrency control.
+
+An example of such would be in the amount of hardware resources available in a
+real system. A real system encounters periods of low activity, but it also
+faces periods of very high activity. During these times, it is much more likely
+that the system runs out of, or is low on, memory. And, with so many operations
+to carry out, it would most likely have to wait for such transactions --- not
+to mention higher CPU costs, which could be a bottleneck, depending on the
+system --- thus creating a bottleneck before our concurrency control, which may
+defeat the purpose of our attempts to widen the concurrency bottleneck.
+
+Other reasons for why the performance would be different for running actual
+application code include the fact that simulations don't account for other
+parts of the database that could go wrong. For example, system failures are not
+accounted for. Additionally, Transaction failures are pretty much ignored in
+this simulation, and throughput is calculated by disregarding the status of a
+completed transaction. Such details may differ in actual applications.
+
+Nonetheless, simulations possess innate benefits --- e.g. ability to get
+performance results fast, which would presumably be important for the purposes
+of a class assignment. For such reasons, performing a simulation rather than a
+real system test makes sense.
+
+
+
+3. LOCKING MANAGER
+~~~~~~~~~~~~~~~~~~
+
+Locking B performs better than Locking A in simulations where there exist some
+read-only transactions in a high contention environment. However, Locking A
+does better in all other simulations --- namely, where there is low contention
+or where we perform read-write transactions.
+
+(Regarding Locking B's advantages) We designed Locking A to grant only one
+transaction the lock for a given record, at a given time --- all other
+transactions attempting access to the record, especially in high contention
+environments, find themselves waiting. Conversely, Locking B intelligently
+grants multiple transactions the lock for a given record, through SHARED locks,
+IF they all only read the record (and do not write over it). In high contention
+environments where read-only transactions are present, Locking B consequently
+outperforms Locking A, as it takes advantage of its ability. With high
+contention, many transactions try to acquire similar locks, so the ability to
+grant SHARED locks becomes much more useful.
+
+(Regarding Locking A's advantages) In cases where Locking B's advantage cannot
+be exploited that well, it will underperform Locking A, due to its overhead
+costs in trying to handle both SHARED and EXCLUSIVE locks. That is to say, in
+cases of low contention, where fewer transactions go after the same locks, or
+in read-write tests, where all transactions would acquire EXCLUSIVE locks,
+regardless of lock manager implementation, Lock Manager A does better because
+it has less overhead that Lock Manager B. For example, in comparing the
+Release() functions of both Lock Managers, Lock Mgr A simply loops through,
+deleting the transaction, updating the txn_waits_, and potentially updating the
+transaction right behind the most recently deleted one. Lock Mgr B, conversely,
+executes the loop for deleting the transaction and updating txn_waits_.
+Afterwards, it calls the Status() function a second time and must compare the
+old and new owners of the lock to grant lock permissions to all newly ready
+transactions. The extra overhead, when added up over multiple transactions adds
+up, eventually crippling Lock Mgr B, when the circumstances do not exploit its
+advantages --- namely read-only SHARED locks in high contention.
+
+The Lock Manager B implementation shares many characteristics with the standard
+two-phase locking implementation. The main similarity lies in the handling of
+Shared and Exclusive locks. Both strategies allow multiple read accesses to a
+record to be shared, while enforcing write accesses to a record be exclusive.
+That is, multiple reads may occur on a record at once, while a write must occur
+only by itself. Additionally, both follow the form of 2-phase locking by using
+both a growing and shrinking phase. In the RunLockingScheduler() function,
+there exists a phase in which locks are being collected. Once all locks are
+successfully collected, we push to ready_txns_, run the txn in parallel, and
+hopefully execute successfully. At this point, we perform the shrinking phase
+by releasing all locks.
+
+By observing that same function, we start to notice the differences between two
+phase locking and our Lock Manager B.
+
+(Blocking vs Abort) In our implementation, when a transaction tries to acquire
+its locks and the union of its read and write sets is more than 1 record, it
+simply releases all current locks in the case where a given lock to a record is
+not immediately granted to it. This constrasts with the two phase locking
+
+(Parallelization) An additional difference that can be seen is that the Lock
+Scheduler that is currently implemented acquires locks for a transaction in a
+serial order, then hands the transaction off to another thread for execution.
+This differs from how the paper discussed two-phase locking because it seemed
+to say that multiple transactions were acquiring locks at the same time. It is
+for this reason that problems, such as deadlock avoidance, arise.
+
+Lastly, this simulation tackles a simplified problem (as has been discussed),
+in which there are no additional inserts, indices (i.e. B+ trees), among other
+complications. This simplification leads to the triviality of deadlock
+avaoidance, isolation levels, and predicate locking, all of which are
+unnecessary for our case.
+
+With these differences stated, we may analyze what situations each Locking B
+and 2-phase locking perform better in. The advantage --- or disadvantage,
+depending on how you look at it --- seems to be in the blocking vs abort.
+
+(2PL > Locking B) That is, 2-phase locking works better when the read and write
+sets are large, especially when transaction duration is small (e.g. 0.1ms).
+Assume that there exists some level of contention. In this case, blocking works
+better than aborting because an aborting protocol, similar to what we use,
+would release all locks, even if we had been close to completing the
+acquisition of locks. In that case, we may have had to wait for a very short
+amount of time, given the transaction duration is small. However, in our choice
+to abort, we have decided to release all locks and reacquire all locks at a
+later time, which will take up more time in total. 2-Phase Locking would have
+simply waited a short amount of time to wait for a lock.
+
+(Locking B > 2PL) This depends on whether parallelization is performed or not.
+If we simply choose to block rather than abort, doing so in a serial manner,
+then 2-phase locking performs badly if transaction duration is large. Assume
+there exists some level of contention. In this case, 2-phase locking would wait
+for a long transaction to complete in the serial Lock acquisition process; if
+it had aborted, as Locking B does, this time could have been used to acquire
+locks for other transactions that don't contend with the currently running
+transactions and get added to read_txns_.
+
+However, in the case parallelization occurs, the only large advantage of
+Locking B is in the case that deadlocks occur often. By aborting in a serial
+manner, Locking B avoids dealing with deadlocks, and this allows it to function
+fairly efficiently.
+
+
+
+4. OCCam'S RAZOR
+~~~~~~~~~~~~~~~~
+
+With a comparison of the results from OCC-P and OCC with serial validation, we
+notice that there is very little to no difference in the performance between
+OCC and OCC-P. Sure, there may be values that differ by a little amount, but
+nothing stands out, and there definitely is not a pattern to the differences in
+values.
+
+The reason that both of these OCC implementations seem to produce the same
+throughput seems to be the result of the increased validation necessary in the
+parallel validation. That is, our implementation of serial validation simply
+checks the read and write sets of each transaction to ensure that the data was
+not updated after our transaction started --- if it was, we abort. This
+requires a total number of operations proportional to the size of the union of
+both the read and write sets.
+
+However, in parallel validation, we require more validation, as we compare our
+write set with the read & write set of all transactions in the active set and
+our read set with the write set of those same transactions. This increased
+validation may, in some cases, make the validations running in parallel to run
+much slower, effectively eliminating the speed-up gained from performing
+parallel updates.
+
+For this reason, it makes sense that the OCC values came out very similar, with
+slight differences, which may be explained by the change in running validation
+checks due to contention reasons, as well as the presence of read-only vs read-
+write sets.
+
+To understand how our OCC implementation differ from the paper, we must
+understand how our database is structured in general. As noted, we build our
+concurrency control mechanisms on top of a main memory database. The paper
+reads, "The [serial validation] is suitable in the case that there is one CPU
+and that the write phase can usually take place in primary memory. If the write
+phase often cannot take place in priary memory, we probably want to have
+concurrent write phases, unless the write phase is extremely short compared to
+the read phase...If there are multiple CPUs, we may wish to introduce more
+potential parallelism in the validation step (this is only necessary for
+efficiency if ... validation is not extremely short as compared to the read
+phase)" (HT Kung, pg. 221).
+
+This quote seems to reason that parallel validation offers most improvement if
+the write phase requires reading from disk. In such a case, parallelization
+would allow another transaction to be validating at the same time that write
+phase occurs. However, for our intents and purposes, there is no reading from
+disk, since this is a main memory database. Thus, this difference in
+implementation may explain why our parallel validation does not receive any
+greater throughput: the lack of a long and memory-intensive write phase
+eliminates the speed-up that could potentially be gained by parallelizing
+validations, which account for a larger portion of overal time expenditure.
+
+
+
+5. OCC VS. LOCKING B
+~~~~~~~~~~~~~~~~~~~~
+
+(High-contention Read-Only) Yes, we observed that OCC and Locking B were about
+the same for high contention read-only with 5-records, but OCC was better for
+the same test with 20-records.
+
+This sudden improvement for OCC, relative to Locking B, comes from the lack of
+overhead in OCC when doing read-only transactions. That is, Locking B must
+insert SHARED locks into its lock table deque, and keep them updated throughout
+the test, even though they won't cause any problems to the transactions. The
+cost of insert --- and, more importantly, the cost to release and keep
+everything clean in the lock table --- results in overhead that Locking B
+unnecessarily does.
+
+In contrast, OCC will simply perform the transaction, then compare the
+timestamps of its data with the start time of a transaction. Rather than having
+overhead in maintaining data structures, this inequality ensures that there are
+no conflicts with these harmless read-only transactions. Thus, it saves time.
+
+These savings are more important when the maintenance of Locking B data
+structures takes more time, and the increase in maintenance cost arises with
+the increase of the number of records for a transaction --- that is, going from
+5 records to 20 records. Thus, this explains why OCC suddenly does better when
+the number of records for a transaction increases.
+
+(High-contention Read-Writes) Further, a comparison of high-contention read-
+writes shows that OCC performs worse than Locking B. The reason behind this
+stems, again, from the difference in validation of both of these methods.
+
+The downfall of OCC is its intrinsic optimism. Meaning, OCC will carry through
+with a transaction with the optimism that it will be valid. Only later does it
+perform checks for its validation phase. This means that if there are high-
+contention read-writes, in which multiple transactions try to perform writes to
+the same record, we are aware that this current transaction is doomed (because
+all of its work will not be accepted by the validation phase), but it remains
+optimistic. Nonetheless, it performs the doomed transaction, only to later find
+out that it was doomed.
+
+Locking B's success comes from its relative pessimism. It recognizes that
+doomed transactions are indeed doomed by attempting to acquire locks *before*
+performing a transaction. The benefit to this is that when it sees that it will
+not obtain a write (EXCLUSIVE) lock to a record, since another transaction in
+the high-contention read-write environment most likely already has the lock, it
+fails the lock-acquisition phase and does not perform the doomed transaction.
+
+This contrast between the two concurrency control mechanism explains why OCC
+performs much worse. Because OCC is taking time to perform doomed transactions
+that Locking B avoids, by using its data structures, it performs much worse.
+
+(Relative Difference via Change in Txn Duration) The change in relative
+difference between OCC and Locking B in high-contention read-write environments
+can be explained by the relative time that a transaction runs for over the
+total time of the transaction, including validation/lock-acquisition.
+
+As earlier stated, OCC performs these doomed transactions through, then aborts
+them in the validation phase. Locking B, however, aborts them early on and does
+not perform them. Thus, OCC does unnecessary transactions that Locking B will
+not do. This becomes a problem as the duration of these transactions increases,
+thus increasing their relative importance in the lifetime of a transaction.
+Thus, the difference in throughput should increase, since there is a massive
+number of larger aborted transactions that OCC performs. This causes the
+throughput to diverge as the duration of the transaction continues to increase.
+
+This also gets in the way of OCC's ability to perform transactions that will be
+validated, thus decreasing the number of successful transactions that it can
+accomplish, which only widens the gap in total throughput between OCC and
+Locking B (Locking B will only run the transactions once you know they will be
+successful, i.e. they will have sole access to the records they require).
+
+
+
+6. MVCC VS. OCC/LOCKING
+~~~~~~~~~~~~~~~~~~~~~~~
+
+MVCC performs much worse than OCC and Locking due to overlocking. That is, for
+read-write tests, MVCC must check writes, but to do so, it must obtain the
+mutex for all of the records in its writeset. In the case of any contention,
+these locks perform horribly, since many transactions could be waiting on a
+sole transaction that has certain overlapping records. The other transactions
+are blocked, waiting for the current transaction to check its writes before
+moving forward.
+
+This is a time-consuming task, which neither OCC nor Locking perform. OCC
+optimistically does a transaction, but once it sees that the transaction cannot
+be validated, it aborts it, putting it back in a queue of transactions that
+need to be performed. Locking, similarly, aborts a transaction once it sees
+that it does not immediately acquire the lock, allowing another transaction to
+proceed.
+
+For this reason, MVCC slows in read-writes. Further, high contention read-
+writes slow MVCC further, sometimes making it perform even worse than serial
+execution. This arises from the fact that locking becomes an even tighter
+bottleneck, as more transactions wish to write to the same record. Thus, high
+contention practically allows only one of most of the transactions to go at a
+time, since all other transactions wait for the same lock. Thus, transaction
+effectively proceed one-at-a-time.
+
+The performance further decreases due to MVCC overhead, both in ordering the
+deques of mvcc_data_ during writes and in guaranteeing that writes are valid.
+By doing so, MVCC becomes worse than a serial processor, as transactions are
+blocked, and once they get their turn, they must deal with overhead of
+traversing this deque.
+
+Maintaining this data structure becomes a hassle, taking up some time,
+especially when numerous versions of a specific record are being added
+concurrently. Such is the case for high contention read-write. That is, low-
+contention read-write does not encounter deques where it must spend much time
+iterating through the deque to find a suitable location to insert the written
+version. Thus, its slowdown is much lower.
+
+However, MVCC shines in mixed read-only/read-write because it allows for the
+advantages of multi-version concurrency control to arise, while also making all
+other concurrency control mechanism performing poorly.
+
+MVCC's construction shows advantages when holding multiple versions of the data
+is beneficial. This presents itself in the fact that the reads of Multiversion
+concurrency control are assumed to be valid, and any writes must guarantee that
+the validity of said reads is not broken. That is, the validation of MVCC
+consists of locking writes and checking to ensure they do not invalidate reads.
+
+Meanwhile, both OCC and locking processors must ensure that reads are valid.
+This was not a problem in the read-only transactions, where OCC did slightly
+better than MVCC, since there were no writes to invalidate the given reads.
+However, with both read and read-writes, it becomes a problem.
+
+To ensure reads are valid, OCC confirms that the data in the readset was not
+altered --- if it was, it aborts and restarts. Locking does so by attempting to
+gain locks --- SHARED in lock mgr B, EXCLUSIVE in lock mgr A --- and if it
+cannot get a lock, it aborts (as long as there are multiple items in the union
+of its read and write sets). Irregardless, these aborts may happen many times
+in such high contention environments, which characterizes starved transactions
+in OCC processors.
+
+Thus, MVCC's behavior of blocking until its write set can be validated performs
+best here, a result of its property of keeping multiple versions of its writes
+for both read-only and read-write transactions to use.
+
+
+
+
+

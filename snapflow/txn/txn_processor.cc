@@ -12,8 +12,8 @@
 
 TxnProcessor::TxnProcessor(CCMode mode)
     : mode_(mode), tp_(THREAD_COUNT), next_unique_id_(1) {
-  
-  
+
+
 
   storage_ = new MVCCStorage();
   storage_->InitStorage();
@@ -207,22 +207,29 @@ void TxnProcessor::PutEndTimestamps(Txn* txn) {
 }
 
 void TxnProcessor::SnapshotExecuteTxn(Txn* txn) {
-
   // Begin stage
   GetBeginTimestamp(txn);
 
   // Normal execution stage
   GetReads(txn);
 
-  if (!CheckWrites(txn))
-    txn->status_ = ABORTED;
-  
   // Preparing stage
+  if (!CheckWrites(txn)) {
+    txn->status_ = ABORTED;
+    Txn* clone = txn->clone();
+    txn_requests_.Push(clone);
+  }
+
   if (txn->Status() == ACTIVE) {
     txn->Run();
     if (txn->Status() != ABORTED) {
       FinishWrites(txn);
       GetEndTimestamp(txn);
+    }
+    else {
+      txn->reads_.empty();
+      txn->writes_.empty();
+      txn_results_.Push(txn);
     }
   }
     
@@ -242,8 +249,6 @@ void TxnProcessor::SnapshotExecuteTxn(Txn* txn) {
     // txn->status_ = INCOMPLETE;
     txn_requests_.Push(txn);
   }
-
-
 }
 
 
@@ -264,5 +269,3 @@ void TxnProcessor::RunSnapshotScheduler() {
 void TxnProcessor::RunNewScheduler() {
   return;
 }
-
-

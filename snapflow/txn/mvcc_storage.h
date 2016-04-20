@@ -4,7 +4,7 @@
 #define _MVCC_STORAGE_H_
 
 #include <limits.h>
-#include <tr1/unordered_map>
+#include <unordered_map>
 #include <deque>
 #include <map>
 
@@ -12,7 +12,7 @@
 #include "txn/txn.h"
 #include "utils/mutex.h"
 
-using std::tr1::unordered_map;
+using std::unordered_map;
 using std::deque;
 using std::map;
 

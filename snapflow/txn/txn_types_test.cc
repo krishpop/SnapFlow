@@ -9,7 +9,7 @@
 #include "utils/testing.h"
 
 TEST(NoopTest) {
-  TxnProcessor p(SERIAL);
+  TxnProcessor p(SI);
 
   Txn* t = new Noop();
   EXPECT_EQ(INCOMPLETE, t->Status());
@@ -24,7 +24,7 @@ TEST(NoopTest) {
 }
 
 TEST(PutTest) {
-  TxnProcessor p(SERIAL);
+  TxnProcessor p(SI);
   Txn* t;
 
   map<Key, Value> m;
@@ -61,7 +61,7 @@ TEST(PutTest) {
 }
 
 TEST(PutMultipleTest) {
-  TxnProcessor p(SERIAL);
+  TxnProcessor p(SI);
   Txn* t;
 
   map<Key, Value> m;
@@ -84,4 +84,3 @@ int main(int argc, char** argv) {
   PutTest();
   PutMultipleTest();
 }
-
