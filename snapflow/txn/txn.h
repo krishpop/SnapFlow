@@ -50,6 +50,11 @@ class Txn {
   // Method containing all the transaction's method logic.
   virtual void Run() = 0;
 
+  // For txns not of type WriteCheck, this just returns true.
+  // For WriteCheck txns, this evaluates whether the original constraint path
+  // is the same at commit time. Called by TxnProcessor.
+  virtual bool Validate() { return true; }
+
   // Checks for overlap in read and write sets. If any key appears in both,
   // an error occurs.
   void CheckReadWriteSets();
