@@ -41,9 +41,14 @@ class Expect : public Txn {
   virtual void Run() {
     Value result;
     for (map<Key, Value>::iterator it = m_.begin(); it != m_.end(); ++it) {
-      if (!Read(it->first, &result) || result != it->second) {
+      // If we didn't find it, this txn is doomed to fail, do not retry.
+      if (!Read(it->first, &result)) {
         ABORT;
       }
+      // If we find it and there is another value => write skew problem?
+      // else if (result != it->second) {
+      //   printf("write-skew?\n");
+      // }
     }
     //COMMIT;
   }

@@ -64,7 +64,7 @@ Txn* TxnProcessor::GetTxnResult() {
 
 void TxnProcessor::RunScheduler() {
   switch (mode_) {
-    case SI:                 RunSnapshotScheduler(); break;
+    case SI:                 RunSnapshotScheduler();
     case NEW:                RunNewScheduler();
   }
 }
@@ -137,6 +137,7 @@ void TxnProcessor::GetBeginTimestamp(Txn* txn) {
 
   mutex_.Lock();
   txn->unique_id_ = next_unique_id_;
+  // This might be a race condition from CheckWrite in mvcc_storage when checking ABORTED
   txn->status_ = ACTIVE;
   next_unique_id_++;
   mutex_.Unlock();
@@ -213,14 +214,30 @@ void TxnProcessor::SnapshotExecuteTxn(Txn* txn) {
 
   GetReads(txn);
 
-  if (!CheckWrites(txn))
+  if (!CheckWrites(txn)) {
+    Txn* copy = txn->clone();
     txn->status_ = ABORTED;
+    txn->reads_.empty();
+    txn->writes_.empty();
+    // Copy txn
+    txn_requests_.Push(copy);
+    return;
+  }
+    
 
   if (txn->Status() == ACTIVE) {
     txn->Run();
     if (txn->Status() != ABORTED) {
       FinishWrites(txn);
       GetEndTimestamp(txn);
+    }
+    // If it's aborted here, it is a permanent abort
+    else {
+      
+      txn->reads_.empty();
+      txn->writes_.empty();
+      txn_results_.Push(txn);
+      
     }
   }
     
@@ -231,10 +248,7 @@ void TxnProcessor::SnapshotExecuteTxn(Txn* txn) {
     PutEndTimestamps(txn);
     txn_results_.Push(txn);
   }
-  else if(txn->Status() == ABORTED) {
-    //TODO: cleanup txn
-    txn_results_.Push(txn);
-  }
+  
 
 
 }

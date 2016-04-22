@@ -9,7 +9,7 @@
 #include "utils/testing.h"
 
 TEST(NoopTest) {
-  TxnProcessor p(SERIAL);
+  TxnProcessor p(SI);
 
   Txn* t = new Noop();
   EXPECT_EQ(INCOMPLETE, t->Status());
@@ -24,54 +24,54 @@ TEST(NoopTest) {
 }
 
 TEST(PutTest) {
-  TxnProcessor p(SERIAL);
+  TxnProcessor p(SI);
   Txn* t;
 
   map<Key, Value> m;
-  m[IntToString(1)] = IntToString(2);
+  m[1] = 2;
 
   map<Key, Value> n;
-  n[IntToString(0)] = IntToString(2);
+  n[5] = 2;
 
   map<Key, Value> o;
-  o[IntToString(1)] = IntToString(1);
+  o[1] = 1;
 
-  map<Key, Value> p;
-  p[IntToString(1)] = IntToString(2);
+  map<Key, Value> q;
+  q[1] = 2;
 
   p.NewTxnRequest(new Put(m));
-  delete p.GetTxnResult();
+  p.GetTxnResult();
 
   p.NewTxnRequest(new Expect(n));  // Should abort (no key '0' exists)
   t = p.GetTxnResult();
   EXPECT_EQ(ABORTED, t->Status());
-  delete t;
+  //delete t;
 
   p.NewTxnRequest(new Expect(o));  // Should abort (wrong value for key)
   t = p.GetTxnResult();
   EXPECT_EQ(ABORTED, t->Status());
-  delete t;
+  //delete t;
 
-  p.NewTxnRequest(new Expect(p));  // Should commit
+  p.NewTxnRequest(new Expect(q));  // Should commit
   t = p.GetTxnResult();
   EXPECT_EQ(COMMITTED, t->Status());
-  delete t;
+  //delete t;
 
   END;
 }
 
 TEST(PutMultipleTest) {
-  TxnProcessor p(SERIAL);
+  TxnProcessor p(SI);
   Txn* t;
 
   map<Key, Value> m;
   for (int i = 0; i < 1000; i++)
-    m[IntToString(i)] = IntToString(i*i);
+    m[i] = i*i;
 
-  p.NewTxnRequest(new PutMultiple(m));
+  p.NewTxnRequest(new Put(m));
   delete p.GetTxnResult();
 
-  p.NewTxnRequest(new ExpectMultiple(m));
+  p.NewTxnRequest(new Expect(m));
   t = p.GetTxnResult();
   EXPECT_EQ(COMMITTED, t->Status());
   delete t;
@@ -83,5 +83,6 @@ int main(int argc, char** argv) {
   NoopTest();
   PutTest();
   PutMultipleTest();
+
 }
 
