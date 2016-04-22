@@ -252,7 +252,12 @@ class Atomic {
 
   // Returns the current value.
   T operator* () {
-    return value_;
+    // This locking might not be needed
+    T temp;
+    mutex_.Lock();
+    temp = value_;
+    mutex_.Unlock();
+    return temp;
   }
 
   // Atomically increments the value.

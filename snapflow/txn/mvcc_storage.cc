@@ -90,7 +90,9 @@ MVCCStorage::~MVCCStorage() {
 uint64 MVCCStorage::GetBeginTimestamp(Version * v, uint64 my_id, Timestamp & ts) {
   // What if ts.txn has committed and replaced itself?
   // This requires that the txn keeps its pointer in the Txn field of the TS
+  ts.mutex_.Lock();
   Txn * txn_p = (Txn*) ts.txn;
+  ts.mutex_.Unlock();
   int status = txn_p->Status();
   uint64 id = txn_p->GetStartID();
 
@@ -118,10 +120,11 @@ uint64 MVCCStorage::GetBeginTimestamp(Version * v, uint64 my_id, Timestamp & ts)
 uint64 MVCCStorage::GetEndTimestamp(Version * v, uint64 my_id, Timestamp & ts) {
   // What if ts.txn has committed and replaced itself?
   // This requires that the txn keeps its pointer in the Txn field of the TS
+  ts.mutex_.Lock();
   Txn * txn_p = (Txn*) ts.txn;
-  // ADDED: TODO handle this better
-  if (!txn_p) 
-    return INF_INT;
+  ts.mutex_.Unlock();
+  // We get a segfault here since txn_p is NULL. This can happen if the edit_bit_ has been
+  // set by another thread BUT we reach the lock first.
   TxnStatus status = txn_p->Status();
 
   if (status == ACTIVE) {
@@ -138,10 +141,10 @@ uint64 MVCCStorage::GetEndTimestamp(Version * v, uint64 my_id, Timestamp & ts) {
 }
 
 
-bool MVCCStorage::Read(Key key, Version** result, uint64 txn_unique_id, TableType tbl_type) {
+bool MVCCStorage::Read(Key key, Version** result, uint64 txn_unique_id) {
 
-  if (mvcc_data_[tbl_type].count(key)) {
-    deque<Version*> * data_versions_p =  mvcc_data_[tbl_type][key];
+  if (mvcc_data_.count(key)) {
+    deque<Version*> * data_versions_p =  mvcc_data_[key];
     uint64 begin_ts, end_ts;
     // This works under the assumption that we have the deque sorted in decreasing order
     Version *right_version = NULL;
@@ -149,21 +152,20 @@ bool MVCCStorage::Read(Key key, Version** result, uint64 txn_unique_id, TableTyp
       it != data_versions_p->end(); ++it) {
 
       // Case 2:
-      if (*(*it)->begin_id_.edit_bit == 1) {
+      if (*((*it)->begin_id_.edit_bit) == 1) {
         begin_ts = GetBeginTimestamp(*it, txn_unique_id, (*it)->begin_id_);
-        if ((*(*it)->end_id_.edit_bit == 1)) {
-          end_ts = GetEndTimestamp(*it, txn_unique_id, (*it)->end_id_);
-          //end_ts = (*it)->end_id_.timestamp;
+        if (!(*((*it)->end_id_.edit_bit) == 1)) {
+          end_ts = (*it)->end_id_.timestamp;
         }
         // Case 3:
         else {
-          end_ts = (*it)->end_id_.timestamp;
+          end_ts = GetEndTimestamp(*it, txn_unique_id, (*it)->end_id_);
         }
       }
       else {
         begin_ts = (*it)->begin_id_.timestamp;
         // Case 3:
-        if (*(*it)->end_id_.edit_bit == 1) {
+        if (*((*it)->end_id_.edit_bit) == 1) {
           end_ts = GetEndTimestamp(*it, txn_unique_id, (*it)->end_id_);
         }
         // Case 1:
@@ -213,21 +215,24 @@ bool MVCCStorage::CheckWrite(Key key, Version* read_version, Txn* current_txn, T
 
   // mutex locks critical section of acquiring write priviledge
   int old_value = 0;
+  // We might not need CAS here...
+  // We might have too much locking here.
+  front->end_id_.mutex_.Lock();
   if (front->end_id_.edit_bit.CAS(&old_value, 1)) {
     front->end_id_.txn = current_txn;
+    front->end_id_.mutex_.Unlock();
     // We leave the timestamp in the front->end_id_.timestamp as INF_INT
     return true;
   }
   else {
-    front->mutex_.Lock();
     Txn* old_txn = (Txn*)front->end_id_.txn;
     if (old_txn && old_txn->Status() == ABORTED) {
       front->end_id_.txn = (void*) current_txn;
-      front->mutex_.Unlock();
+      front->end_id_.mutex_.Unlock();
       return true;
     }
     else {
-      front->mutex_.Unlock();
+      front->end_id_.mutex_.Unlock();
       return false;
     }
   }
