@@ -19,7 +19,7 @@ bool Txn::Read(const Key& key, Value * value, const TableType& table) {
   }
   // 'reads_' has already been populated by TxnProcessor, so it should contain
   // the target value iff the record appears in the database.
-  else if (reads_.count(key)) {
+  else if (reads_[table].count(key)) {
     *value = reads_[table][key]->value_;
     return true;
   } 
