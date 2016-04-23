@@ -12,8 +12,8 @@
 
 TxnProcessor::TxnProcessor(CCMode mode)
     : mode_(mode), tp_(THREAD_COUNT), next_unique_id_(1) {
-
-
+  
+  
 
   storage_ = new MVCCStorage();
   storage_->InitStorage();
@@ -154,20 +154,11 @@ void TxnProcessor::GetEndTimestamp(Txn* txn) {
 
 void TxnProcessor::GetReads(Txn* txn) {
 
-  for (set<Key>::iterator it = txn->readset_[CHECKING].begin();
-     it != txn->readset_[CHECKING].end(); ++it) {
+  for (set<Key>::iterator it = txn->readset_.begin();
+     it != txn->readset_.end(); ++it) {
 
     Version * result = NULL;
-    if (storage_->Read(*it, &result, txn->unique_id_, CHECKING)) {
-      txn->reads_[*it] = result;
-    }
-  }
-
-  for (set<Key>::iterator it = txn->readset_[SAVINGS].begin();
-     it != txn->readset_[SAVINGS].end(); ++it) {
-
-    Version * result = NULL;
-    if (storage_->Read(*it, &result, txn->unique_id_, SAVINGS)) {
+    if (storage_->Read(*it, &result, txn->unique_id_)) {
       txn->reads_[*it] = result;
     }
   }
@@ -176,27 +167,14 @@ void TxnProcessor::GetReads(Txn* txn) {
 
 bool TxnProcessor::CheckWrites(Txn* txn) {
 
-  for (set<Key>::iterator it = txn->writeset_[CHECKING].begin();
-     it != txn->writeset_[CHECKING].end(); ++it) {
+  for (set<Key>::iterator it = txn->writeset_.begin();
+     it != txn->writeset_.end(); ++it) {
 
     Version * result = NULL;
-    if (storage_->Read(*it, &result, txn->unique_id_, CHECKING)) {
+    if (storage_->Read(*it, &result, txn->unique_id_)) {
       txn->reads_[*it] = result;
 
-      if (!storage_->CheckWrite(*it, result, txn, CHECKING)) {
-        return false;
-      }
-    }
-  }
-
-  for (set<Key>::iterator it = txn->writeset_[SAVINGS].begin();
-     it != txn->writeset_[SAVINGS].end(); ++it) {
-
-    Version * result = NULL;
-    if (storage_->Read(*it, &result, txn->unique_id_, SAVINGS)) {
-      txn->reads_[*it] = result;
-
-      if (!storage_->CheckWrite(*it, result, txn, SAVINGS)) {
+      if (!storage_->CheckWrite(*it, result, txn)) {
         return false;
       }
     }
@@ -207,19 +185,11 @@ bool TxnProcessor::CheckWrites(Txn* txn) {
 
 void TxnProcessor::FinishWrites(Txn* txn) {
 
-  for (map<Key, Version*>::iterator it = txn->writes_[CHECKING].begin();
-     it != txn->writes_[CHECKING].end(); ++it) {
+  for (map<Key, Version*>::iterator it = txn->writes_.begin();
+     it != txn->writes_.end(); ++it) {
 
     // first is pointer to version, 2nd is txn
-    storage_->FinishWrite(it->first, it->secondm CHECKING);
-
-  }
-
-  for (map<Key, Version*>::iterator it = txn->writes_[SAVINGS].begin();
-     it != txn->writes_[SAVINGS].end(); ++it) {
-
-    // first is pointer to version, 2nd is txn
-    storage_->FinishWrite(it->first, it->second, SAVINGS);
+    storage_->FinishWrite(it->first, it->second);
 
   }
 
@@ -227,43 +197,33 @@ void TxnProcessor::FinishWrites(Txn* txn) {
 
 void TxnProcessor::PutEndTimestamps(Txn* txn) {
 
-  for (map<Key, Version*>::iterator it = txn->writes_[CHECKING].begin();
-     it != txn->writes_[CHECKING].end(); ++it) {
+  for (map<Key, Version*>::iterator it = txn->writes_.begin();
+     it != txn->writes_.end(); ++it) {
 
     // first is the old version, 2nd is new version
-    storage_->PutEndTimestamp(txn->reads_[it->first], txn->writes_[CHECKING][it->first], txn->end_unique_id_, CHECKING);
-
-  }
-
-  for (map<Key, Version*>::iterator it = txn->writes_[SAVINGS].begin();
-     it != txn->writes_[SAVINGS].end(); ++it) {
-
-    // first is the old version, 2nd is new version
-    storage_->PutEndTimestamp(txn->reads_[it->first], txn->writes_[SAVINGS][it->first], txn->end_unique_id_, SAVINGS);
+    storage_->PutEndTimestamp(txn->reads_[it->first], txn->writes_[it->first], txn->end_unique_id_);
 
   }
 
 }
 
 void TxnProcessor::SnapshotExecuteTxn(Txn* txn) {
-  // Begin stage
+
+
   GetBeginTimestamp(txn);
 
-  // Normal execution stage
   GetReads(txn);
 
   if (!CheckWrites(txn)) {
     Txn* copy = txn->clone();
     txn->status_ = ABORTED;
-    txn->reads_[CHECKING].empty();
-    txn->writes_[CHECKING].empty();
-    txn->reads_[SAVINGS].empty();
-    txn->writes_[SAVINGS].empty();
+    txn->reads_.empty();
+    txn->writes_.empty();
     // Copy txn
     txn_requests_.Push(copy);
     return;
   }
-
+    
 
   if (txn->Status() == ACTIVE) {
     txn->Run();
@@ -273,27 +233,24 @@ void TxnProcessor::SnapshotExecuteTxn(Txn* txn) {
     }
     // If it's aborted here, it is a permanent abort
     else {
-      txn->reads_[CHECKING].empty();
-      txn->writes_[CHECKING].empty();
-      txn->reads_[SAVINGS].empty();
-      txn->writes_[SAVINGS].empty();
+      
+      txn->reads_.empty();
+      txn->writes_.empty();
       txn_results_.Push(txn);
+      
     }
   }
+    
+    
+    
 
-  // Postprocessing Phase
   if (txn->Status() == COMMITTED){
     PutEndTimestamps(txn);
     txn_results_.Push(txn);
   }
+  
 
-    // atomically attempts to set end field of old versions to infinity
 
-    txn->reads_.empty();
-    txn->writes_.empty();
-    // txn->status_ = INCOMPLETE;
-    txn_requests_.Push(txn);
-  }
 }
 
 
@@ -309,8 +266,10 @@ void TxnProcessor::RunSnapshotScheduler() {
   }
 }
 
-/////////////////////// END OF CONSTRAINT SNAPSHOT EXECUTION /////////////////////////////
+/////////////////////// END OF SNAPSHOT EXECUTION /////////////////////////////
 
 void TxnProcessor::RunNewScheduler() {
   return;
 }
+
+

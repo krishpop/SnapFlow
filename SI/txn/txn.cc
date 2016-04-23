@@ -2,9 +2,9 @@
 
 #include "txn/txn.h"
 uint64 INF_INT = std::numeric_limits<uint64>::max();
-bool Txn::Read(const Key& key, Value * value, const TableType& table) {
+bool Txn::Read(const Key& key, Value * value) {
   // Check that key is in readset/writeset.
-  if (readset_[table].count(key) == 0 && writeset_[table].count(key) == 0)
+  if (readset_.count(key) == 0 && writeset_.count(key) == 0)
     DIE("Invalid read (key not in readset or writeset).");
 
   // Reads have no effect if we have already aborted or committed.
@@ -13,14 +13,14 @@ bool Txn::Read(const Key& key, Value * value, const TableType& table) {
 
   // If we have previously written to key, then we read the newest local
   // version.
-  if (writes_[table].count(key)) {
-    *value = writes_[table][key]->value_;
+  if (writes_.count(key)) {
+    *value = writes_[key]->value_;
     return true;
   }
   // 'reads_' has already been populated by TxnProcessor, so it should contain
   // the target value iff the record appears in the database.
   else if (reads_.count(key)) {
-    *value = reads_[table][key]->value_;
+    *value = reads_[key]->value_;
     return true;
   } 
   else {
@@ -28,9 +28,9 @@ bool Txn::Read(const Key& key, Value * value, const TableType& table) {
   }
 }
 
-void Txn::Write(const Key& key, const Value& value, Version * to_insert, const TableType& table) {
+void Txn::Write(const Key& key, const Value& value, Version * to_insert) {
   // Check that key is in writeset.
-  if (writeset_[table].count(key) == 0)
+  if (writeset_.count(key) == 0)
     DIE("Invalid write to key " << key << " (writeset).");
 
   // Writes have no effect if we have already aborted or committed.
@@ -44,7 +44,7 @@ void Txn::Write(const Key& key, const Value& value, Version * to_insert, const T
   to_insert->begin_id_ = begin_ts;
   to_insert->end_id_ = end_ts;
   // Set key-value pair in write buffer.
-  writes_[table][key] = to_insert;
+  writes_[key] = to_insert;
 
   // Also set key-value pair in read results in case txn logic requires the
   // record to be re-read.
@@ -61,10 +61,10 @@ void Txn::CheckReadWriteSets() {
 }
 
 void Txn::CopyTxnInternals(Txn* txn) const {
-  txn->readset_ = vector<set<Key>>(this->readset_);
-  txn->writeset_ = vector<set<Key>>(this->writeset_);
-  txn->reads_ = vector<map<Key, Version*>>(this->reads_);
-  txn->writes_ = vector<map<Key, Version*>>(this->writes_);
+  txn->readset_ = set<Key>(this->readset_);
+  txn->writeset_ = set<Key>(this->writeset_);
+  txn->reads_ = map<Key, Version*>(this->reads_);
+  txn->writes_ = map<Key, Version*>(this->writes_);
   txn->status_ = this->status_;
   txn->unique_id_ = this->unique_id_;
   txn->end_unique_id_ = this->end_unique_id_;
