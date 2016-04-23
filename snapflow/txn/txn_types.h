@@ -201,6 +201,7 @@ class WriteCheck : public Txn {
       // a WC txn will use the readset_[CHECKING] to look BOTH in
       // checking and savings.
       readset_[CHECKING].insert(key);
+      readset_[SAVING].insert(key);
     }
 
   }
