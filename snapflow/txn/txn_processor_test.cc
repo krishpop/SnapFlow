@@ -114,13 +114,13 @@ void Benchmark(const vector<LoadGen*>& lg) {
 
         // Record end time.
         double end = GetTime();
-      
+
         throughput[round] = txn_count / (end-start);
 
         doneTxns.clear();
         delete p;
       }
-      
+
       // Print throughput
       cout << "\t" << (throughput[0] + throughput[1] + throughput[2]) / 3 << "\t" << flush;
     }
@@ -155,7 +155,7 @@ int main(int argc, char** argv) {
   for (uint32 i = 0; i < lg.size(); i++)
     delete lg[i];
   lg.clear();
-  
+
   cout << "'Low contention' Read only (20 records) " << endl;
   lg.push_back(new RMWLoadGen(1000000, 20, 0, 0.0001));
   lg.push_back(new RMWLoadGen(1000000, 20, 0, 0.001));
@@ -166,7 +166,7 @@ int main(int argc, char** argv) {
   for (uint32 i = 0; i < lg.size(); i++)
     delete lg[i];
   lg.clear();
-  
+
   cout << "'High contention' Read only (5 records)" << endl;
   lg.push_back(new RMWLoadGen(100, 5, 0, 0.0001));
   lg.push_back(new RMWLoadGen(100, 5, 0, 0.001));
@@ -188,7 +188,7 @@ int main(int argc, char** argv) {
   for (uint32 i = 0; i < lg.size(); i++)
     delete lg[i];
   lg.clear();
-  
+
   cout << "Low contention read-write (5 records)" << endl;
   lg.push_back(new RMWLoadGen(1000000, 0, 5, 0.0001));
   lg.push_back(new RMWLoadGen(1000000, 0, 5, 0.001));
@@ -199,7 +199,7 @@ int main(int argc, char** argv) {
   for (uint32 i = 0; i < lg.size(); i++)
     delete lg[i];
   lg.clear();
-  
+
   cout << "Low contention read-write (10 records)" << endl;
   lg.push_back(new RMWLoadGen(1000000, 0, 10, 0.0001));
   lg.push_back(new RMWLoadGen(1000000, 0, 10, 0.001));
@@ -210,7 +210,7 @@ int main(int argc, char** argv) {
   for (uint32 i = 0; i < lg.size(); i++)
     delete lg[i];
   lg.clear();
-  
+
   cout << "High contention read-write (1 records)" << endl;
   lg.push_back(new RMWLoadGen(5, 0, 1, 0.0001));
   lg.push_back(new RMWLoadGen(5, 0, 1, 0.001));
@@ -221,7 +221,7 @@ int main(int argc, char** argv) {
   for (uint32 i = 0; i < lg.size(); i++)
     delete lg[i];
   lg.clear();
-  
+
   cout << "High contention read-write (5 records)" << endl;
   lg.push_back(new RMWLoadGen(100, 0, 5, 0.0001));
   lg.push_back(new RMWLoadGen(100, 0, 5, 0.001));
@@ -243,7 +243,7 @@ int main(int argc, char** argv) {
   for (uint32 i = 0; i < lg.size(); i++)
     delete lg[i];
   lg.clear();
-  
+
   // 80% of transactions are READ only transactions and run for the full
   // transaction duration. The rest are very fast (< 0.1ms), high-contention
   // updates.
@@ -258,4 +258,3 @@ int main(int argc, char** argv) {
     delete lg[i];
   lg.clear();
 }
-

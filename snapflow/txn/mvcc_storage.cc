@@ -5,44 +5,48 @@
 
 // Init the storage
 void MVCCStorage::InitStorage() {
+  mvcc_data_.push_back(InitTable()); // Table for checking
+  mvcc_data_.push_back(InitTable()); // Table for savings
+}
+
+// Init the table
+unordered_map<Key, deque<Version*>*> MVCCStorage::InitTable() {
+  unordered_map<Key, deque<Version*>*> table_;
+
   for (int i = 0; i < 1000000;i++) {
-    mvcc_data_[i] = new deque<Version*>();
+    table_[i] = new deque<Version*>();
     Timestamp begin_ts = Timestamp{ 0, NULL, 0};
     Timestamp end_ts = Timestamp{ INF_INT, NULL, 0};
+
     Version* to_insert = new Version;
     to_insert->value_ = 0;
     to_insert->begin_id_ = begin_ts;
     to_insert->end_id_ = end_ts;
-    mvcc_data_[i]->push_front(to_insert);
+
+    table_[i]->push_front(to_insert);
   }
+
+  return table_;
 }
 
 // Free memory.
 MVCCStorage::~MVCCStorage() {
-  for (unordered_map<Key, deque<Version*>*>::iterator it = mvcc_data_.begin();
-       it != mvcc_data_.end(); ++it) {
+  // clear checking table
+  for (unordered_map<Key, deque<Version*>*>::iterator it = mvcc_data_[CHECKING].begin();
+       it != mvcc_data_[CHECKING].end(); ++it) {
     delete it->second;
   }
 
+  // clear savings table
+  for (unordered_map<Key, deque<Version*>*>::iterator it = mvcc_data_[SAVINGS].begin();
+       it != mvcc_data_[SAVINGS].end(); ++it) {
+    delete it->second;
+  }
+
+  // clear storage
   mvcc_data_.clear();
 
-  // for (unordered_map<Key, Mutex*>::iterator it = mutexs_.begin();
-  //      it != mutexs_.end(); ++it) {
-  //   delete it->second;
-  // }
-
-  // mutexs_.clear();
 }
-
-// Lock the key to protect its version_list. Remember to lock the key when you read/update the version_list
-// void MVCCStorage::Lock(Key key) {
-//   mutexs_[key]->Lock();
-// }
-
-// // Unlock the key.
-// void MVCCStorage::Unlock(Key key) {
-//   mutexs_[key]->Unlock();
-// }
 
 // MVCC Read
 /*Read for SI and SSI is more complex. Only certain versions are visible
@@ -66,7 +70,6 @@ MVCCStorage::~MVCCStorage() {
  * status currently operating on the end_id_ of this version. If Active, then
  *
  */
-
 
 uint64 MVCCStorage::GetBeginTimestamp(Version * v, uint64 my_id, Timestamp & ts) {
   // What if ts.txn has committed and replaced itself?
@@ -122,10 +125,9 @@ uint64 MVCCStorage::GetEndTimestamp(Version * v, uint64 my_id, Timestamp & ts) {
 }
 
 
-bool MVCCStorage::Read(Key key, Version** result, uint64 txn_unique_id) {
-
-  if (mvcc_data_.count(key)) {
-    deque<Version*> * data_versions_p =  mvcc_data_[key];
+bool MVCCStorage::Read(Key key, Version** result, uint64 txn_unique_id, const TableType tbl_type) {
+  if (mvcc_data_[tbl_type].count(key)) {
+    deque<Version*> * data_versions_p =  mvcc_data_[tbl_type][key];
     uint64 begin_ts, end_ts;
     // This works under the assumption that we have the deque sorted in decreasing order
     Version *right_version = NULL;
@@ -188,18 +190,16 @@ void MVCCStorage::PutEndTimestamp(Version * old_version, Version * new_version, 
 }
 
 // MVCC CheckWrite returns true if Write without conflict
-bool MVCCStorage::CheckWrite(Key key, Version* read_version, Txn* current_txn) {
-  deque<Version*> * data_p = mvcc_data_[key];
+bool MVCCStorage::CheckWrite(Key key, Version* read_version, Txn* current_txn, const TableType tbl_type) {
+  deque<Version*> * data_p = mvcc_data_[tbl_type][key];
   Version * front = data_p->front();
 
   // TODO: Need to check read_version with front?
 
   // mutex locks critical section of acquiring write priviledge
-  int old_value = 0;
-  // We might not need CAS here...
-  // We might have too much locking here.
   front->end_id_.mutex_.Lock();
-  if (front->end_id_.edit_bit.CAS(&old_value, 1)) {
+  if (front->end_id_.edit_bit == 0) {
+    front->end_id_.edit_bit == 1;
     front->end_id_.txn = current_txn;
     front->end_id_.mutex_.Unlock();
     // We leave the timestamp in the front->end_id_.timestamp as INF_INT
@@ -220,9 +220,8 @@ bool MVCCStorage::CheckWrite(Key key, Version* read_version, Txn* current_txn) {
   return false;
 }
 
-void MVCCStorage::FinishWrite(Key key, Version* new_version) {
-  deque<Version*> * data_p = mvcc_data_[key];
-  // Is this a race condition against accessing front() in CheckWrite?
+void MVCCStorage::FinishWrite(Key key, Version* new_version, const TableType tbl_type) {
+  deque<Version*> * data_p = mvcc_data_[tbl_type][key];
   data_p->push_front(new_version);
   return;
 }

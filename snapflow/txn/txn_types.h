@@ -329,5 +329,106 @@ class WriteCheck : public Txn {
   Value constraint_;
 };
 
+
+// WriteCheck txns to deal with write-skew (used by a Checking/Savings system)
+class WriteCheck : public Txn {
+ public:
+  explicit WriteCheck(double time = 0) : time_(time) {}
+  WriteCheck(const set<Key>& writeset, double time = 0) : time_(time) {
+    writeset_ = writeset;
+  }
+  WriteCheck(const set<Key>& readset, const set<Key>& writeset, double time = 0)
+      : time_(time) {
+    readset_ = readset;
+    writeset_ = writeset;
+  }
+
+  // Constructor with randomized read/write sets
+  WriteCheck(int dbsize, int readsetsize, int writesetsize, double time = 0)
+      : time_(time) {
+    // Make sure we can find enough unique keys.
+    DCHECK(dbsize >= readsetsize + writesetsize);
+
+    // Find readsetsize unique read keys.
+    for (int i = 0; i < readsetsize; i++) {
+      Key key;
+      do {
+        key = rand() % dbsize;
+      } while (readset_.count(key));
+      readset_.insert(key);
+    }
+
+    // Find writesetsize unique write keys.
+    for (int i = 0; i < writesetsize; i++) {
+      Key key;
+      do {
+        key = rand() % dbsize;
+      } while (readset_.count(key) || writeset_.count(key));
+      writeset_.insert(key);
+    }
+  }
+
+  WriteCheck* clone() const {             // Virtual constructor (copying)
+    WriteCheck* clone = new WriteCheck(time_);
+    this->CopyTxnInternals(clone);
+    return clone;
+  }
+
+  // Just readset?
+  // This functions checks our readset again and creates a constraint checking
+  // struct and compares it with the original one. Returns true if they're
+  // the same, returns false otherwise.
+  virtual bool Validate() {
+    for (set<Key>::iterator it = readset_.begin(); it != readset_.end(); ++it) {
+      if (!ConstructGraph(*it)) { // This must be done before committing, right?
+        return false;
+      }
+    }
+    return true;
+  }
+
+  // Constructs an EdgeGraph and compares with graph_ while doing so.
+  // Returns true if the constructed edge matches with graph_'s, otherwise
+  // returns false.
+  bool ConstructGraph(const Key& key) {
+
+  }
+
+  // TODO: update this Run function to create some kind of struct that checks
+  // the path taken through the constraint checks.
+  virtual void Run() {
+    Value result;
+    // Read everything in readset.
+    for (set<Key>::iterator it = readset_.begin(); it != readset_.end(); ++it)
+      Read(*it, &result);
+
+    // Increment length of everything in writeset.
+    for (set<Key>::iterator it = writeset_.begin(); it != writeset_.end();
+         ++it) {
+      Version * to_insert = new Version;
+      result = 0;
+      Read(*it, &result);
+      Write(*it, result + 1, to_insert);
+    }
+
+    // Run while loop to simulate the txn logic(duration is time_).
+    double begin = GetTime();
+    while (GetTime() - begin < time_) {
+      for (int i = 0;i < 1000; i++) {
+        int x = 100;
+        x = x + 2;
+        x = x*x;
+      }
+    }
+    
+    // For SI we do not want to set the status at txn execution time.
+    //COMMIT;
+  }
+
+ private:
+  double time_;
+  EdgeGraph graph_;
+};
+
 #endif  // _TXN_TYPES_H_
 
