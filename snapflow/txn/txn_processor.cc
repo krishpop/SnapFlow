@@ -227,8 +227,10 @@ void TxnProcessor::SnapshotExecuteTxn(Txn* txn) {
 
     // atomically attempts to set end field of old versions to infinity
 
-    txn->reads_.empty();
-    txn->writes_.empty();
+    txn->reads_[CHECKING].empty();
+    txn->reads_[SAVINGS].empty();
+    txn->writes_[CHECKING].empty();
+    txn->writes_[SAVINGS].empty();
     txn_requests_.Push(txn);
   }
 }
