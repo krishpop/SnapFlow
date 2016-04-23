@@ -111,21 +111,16 @@ class Txn {
 
   // Set of all keys that may need to be read in order to execute the
   // transaction.
-  set<Key> readset_chk_;
-  set<Key> readset_sav_;
+  set<Key> readset_;
 
   // Set of all keys that may be updated when executing the transaction.
-  set<Key> writeset_chk_;
-  set<Key> writeset_sav_;
+  set<Key> writeset_;
 
   // Results of reads performed by the transaction.
-  map<Key, Version*> reads_chk_;
-  map<Key, Version*> reads_sav_;
-
+  map<Key, Version*> reads_;
 
   // Key, Value pairs WRITTEN by the transaction.
-  map<Key, Version*> writes_chk_;
-  map<Key, Version*> writes_sav_;
+  map<Key, Version*> writes_;
 
   // Transaction's current execution status.
   TxnStatus status_;
