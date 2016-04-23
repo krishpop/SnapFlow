@@ -88,10 +88,10 @@ class Put : public Txn {
 class RMW : public Txn {
  public:
   explicit RMW(double time = 0) : time_(time) {}
-  RMW(const set<Key>& writeset, double time = 0) : time_(time) {
+  RMW(const vector<set<Key>>& writeset, double time = 0) : time_(time) {
     writeset_ = writeset;
   }
-  RMW(const set<Key>& readset, const set<Key>& writeset, double time = 0)
+  RMW(const vector<set<Key>>& readset, const vector<set<Key>>& writeset, double time = 0)
       : time_(time) {
     readset_ = readset;
     writeset_ = writeset;
@@ -103,22 +103,42 @@ class RMW : public Txn {
     // Make sure we can find enough unique keys.
     DCHECK(dbsize >= readsetsize + writesetsize);
 
+    // TODO: change readsetsize / 2 to something else, breaks for odd size
+
     // Find readsetsize unique read keys.
-    for (int i = 0; i < readsetsize; i++) {
+    for (int i = 0; i < readsetsize / 2; i++) {
       Key key;
       do {
         key = rand() % dbsize;
-      } while (readset_.count(key));
-      readset_.insert(key);
+      } while (readset_[CHECKING].count(key));
+        readset_[CHECKING].insert(key);
+    }
+
+    // Find readsetsize unique read keys.
+    for (int i = 0; i < readsetsize / 2; i++) {
+      Key key;
+      do {
+        key = rand() % dbsize;
+      } while (readset_[SAVINGS].count(key));
+        readset_[SAVINGS].insert(key);
     }
 
     // Find writesetsize unique write keys.
-    for (int i = 0; i < writesetsize; i++) {
+    for (int i = 0; i < writesetsize / 2; i++) {
       Key key;
       do {
         key = rand() % dbsize;
-      } while (readset_.count(key) || writeset_.count(key));
-      writeset_.insert(key);
+      } while (readset_[CHECKING].count(key) || writeset_[CHECKING].count(key));
+        writeset_[CHECKING].insert(key);
+    }
+
+    // Find writesetsize unique write keys.
+    for (int i = 0; i < writesetsize / 2; i++) {
+      Key key;
+      do {
+        key = rand() % dbsize;
+      } while (readset_[SAVINGS].count(key) || writeset_[SAVINGS].count(key));
+        writeset_[SAVINGS].insert(key);
     }
   }
 
@@ -171,15 +191,14 @@ class RMW : public Txn {
   double time_;
 };
 
-
 // WriteCheck txns to deal with write-skew (used by a Checking/Savings system)
 class WriteCheck : public Txn {
  public:
   explicit WriteCheck(double time = 0) : time_(time) {}
-  WriteCheck(const set<Key>& writeset, double time = 0) : time_(time) {
+  WriteCheck(const vector<set<Key>>& writeset, double time = 0) : time_(time) {
     writeset_ = writeset;
   }
-  WriteCheck(const set<Key>& readset, const set<Key>& writeset, double time = 0)
+  WriteCheck(const vector<set<Key>>& readset, const vector<set<Key>>& writeset, double time = 0)
       : time_(time) {
     readset_ = readset;
     writeset_ = writeset;
@@ -192,21 +211,40 @@ class WriteCheck : public Txn {
     DCHECK(dbsize >= readsetsize + writesetsize);
 
     // Find readsetsize unique read keys.
-    for (int i = 0; i < readsetsize; i++) {
+    for (int i = 0; i < readsetsize / 2; i++) {
       Key key;
       do {
         key = rand() % dbsize;
-      } while (readset_.count(key));
-      readset_.insert(key);
+      }
+      while (readset_[CHECKING].count(key));
+        readset_[CHECKING].insert(key);
+    }
+
+    // Find readsetsize unique read keys.
+    for (int i = 0; i < readsetsize / 2; i++) {
+      Key key;
+      do {
+        key = rand() % dbsize;
+      } while (readset_[SAVINGS].count(key));
+        readset_[SAVINGS].insert(key);
     }
 
     // Find writesetsize unique write keys.
-    for (int i = 0; i < writesetsize; i++) {
+    for (int i = 0; i < writesetsize / 2; i++) {
       Key key;
       do {
         key = rand() % dbsize;
-      } while (readset_.count(key) || writeset_.count(key));
-      writeset_.insert(key);
+      } while (readset_[CHECKING].count(key) || writeset_[CHECKING].count(key));
+        writeset_[CHECKING].insert(key);
+    }
+
+    // Find writesetsize unique write keys.
+    for (int i = 0; i < writesetsize / 2; i++) {
+      Key key;
+      do {
+        key = rand() % dbsize;
+      } while (readset_[SAVINGS].count(key) || writeset_[SAVINGS].count(key));
+        writeset_[SAVINGS].insert(key);
     }
   }
 
