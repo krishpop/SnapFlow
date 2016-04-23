@@ -154,11 +154,20 @@ void TxnProcessor::GetEndTimestamp(Txn* txn) {
 
 void TxnProcessor::GetReads(Txn* txn) {
 
-  for (set<Key>::iterator it = txn->readset_.begin();
-     it != txn->readset_.end(); ++it) {
+  for (set<Key>::iterator it = txn->readset_chk_.begin();
+     it != txn->readset_chk_.end(); ++it) {
 
     Version * result = NULL;
-    if (storage_->Read(*it, &result, txn->unique_id_)) {
+    if (storage_->Read(*it, &result, txn->unique_id_, CHECKING)) {
+      txn->reads_[*it] = result;
+    }
+  }
+
+  for (set<Key>::iterator it = txn->readset_sav_.begin();
+     it != txn->readset_sav_.end(); ++it) {
+
+    Version * result = NULL;
+    if (storage_->Read(*it, &result, txn->unique_id_, SAVINGS)) {
       txn->reads_[*it] = result;
     }
   }
@@ -167,14 +176,27 @@ void TxnProcessor::GetReads(Txn* txn) {
 
 bool TxnProcessor::CheckWrites(Txn* txn) {
 
-  for (set<Key>::iterator it = txn->writeset_.begin();
-     it != txn->writeset_.end(); ++it) {
+  for (set<Key>::iterator it = txn->writeset_chk_.begin();
+     it != txn->writeset_chk_.end(); ++it) {
 
     Version * result = NULL;
-    if (storage_->Read(*it, &result, txn->unique_id_)) {
+    if (storage_->Read(*it, &result, txn->unique_id_, CHECKING)) {
       txn->reads_[*it] = result;
 
-      if (!storage_->CheckWrite(*it, result, txn)) {
+      if (!storage_->CheckWrite(*it, result, txn, CHECKING)) {
+        return false;
+      }
+    }
+  }
+
+  for (set<Key>::iterator it = txn->writeset_sav_.begin();
+     it != txn->writeset_sav_.end(); ++it) {
+
+    Version * result = NULL;
+    if (storage_->Read(*it, &result, txn->unique_id_, SAVINGS)) {
+      txn->reads_[*it] = result;
+
+      if (!storage_->CheckWrite(*it, result, txn, SAVINGS)) {
         return false;
       }
     }
@@ -185,11 +207,19 @@ bool TxnProcessor::CheckWrites(Txn* txn) {
 
 void TxnProcessor::FinishWrites(Txn* txn) {
 
-  for (map<Key, Version*>::iterator it = txn->writes_.begin();
-     it != txn->writes_.end(); ++it) {
+  for (map<Key, Version*>::iterator it = txn->writes_chk_.begin();
+     it != txn->writes_chk_.end(); ++it) {
 
     // first is pointer to version, 2nd is txn
-    storage_->FinishWrite(it->first, it->second);
+    storage_->FinishWrite(it->first, it->secondm CHECKING);
+
+  }
+
+  for (map<Key, Version*>::iterator it = txn->writes_sav_.begin();
+     it != txn->writes_sav_.end(); ++it) {
+
+    // first is pointer to version, 2nd is txn
+    storage_->FinishWrite(it->first, it->second, SAVINGS);
 
   }
 
@@ -197,11 +227,19 @@ void TxnProcessor::FinishWrites(Txn* txn) {
 
 void TxnProcessor::PutEndTimestamps(Txn* txn) {
 
-  for (map<Key, Version*>::iterator it = txn->writes_.begin();
-     it != txn->writes_.end(); ++it) {
+  for (map<Key, Version*>::iterator it = txn->writes_chk_.begin();
+     it != txn->writes_chk_.end(); ++it) {
 
     // first is the old version, 2nd is new version
-    storage_->PutEndTimestamp(txn->reads_[it->first], txn->writes_[it->first], txn->end_unique_id_);
+    storage_->PutEndTimestamp(txn->reads_[it->first], txn->writes_chk_[it->first], txn->end_unique_id_, CHECKING);
+
+  }
+
+  for (map<Key, Version*>::iterator it = txn->writes_sav_.begin();
+     it != txn->writes_sav_.end(); ++it) {
+
+    // first is the old version, 2nd is new version
+    storage_->PutEndTimestamp(txn->reads_[it->first], txn->writes_sav_[it->first], txn->end_unique_id_, SAVINGS);
 
   }
 
@@ -217,8 +255,10 @@ void TxnProcessor::SnapshotExecuteTxn(Txn* txn) {
   if (!CheckWrites(txn)) {
     Txn* copy = txn->clone();
     txn->status_ = ABORTED;
-    txn->reads_.empty();
-    txn->writes_.empty();
+    txn->reads_chk_.empty();
+    txn->writes_chk_.empty();
+    txn->reads_sav_.empty();
+    txn->writes_sav_.empty();
     // Copy txn
     txn_requests_.Push(copy);
     return;
@@ -234,8 +274,10 @@ void TxnProcessor::SnapshotExecuteTxn(Txn* txn) {
     // If it's aborted here, it is a permanent abort
     else {
 
-      txn->reads_.empty();
-      txn->writes_.empty();
+      txn->reads_chk_.empty();
+      txn->writes_chk_.empty();
+      txn->reads_sav_.empty();
+      txn->writes_sav_.empty();
       txn_results_.Push(txn);
 
     }
@@ -246,7 +288,7 @@ void TxnProcessor::SnapshotExecuteTxn(Txn* txn) {
     PutEndTimestamps(txn);
     txn_results_.Push(txn);
   }
-  
+
 
     // atomically attempts to set end field of old versions to infinity
 

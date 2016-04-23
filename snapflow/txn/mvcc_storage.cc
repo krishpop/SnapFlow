@@ -141,10 +141,9 @@ uint64 MVCCStorage::GetEndTimestamp(Version * v, uint64 my_id, Timestamp & ts) {
 }
 
 
-bool MVCCStorage::Read(Key key, Version** result, uint64 txn_unique_id) {
-
-  if (mvcc_data_.count(key)) {
-    deque<Version*> * data_versions_p =  mvcc_data_[key];
+bool MVCCStorage::Read(Key key, Version** result, uint64 txn_unique_id, TableType tbl_type) {
+  if (mvcc_data_[tbl_type].count(key)) {
+    deque<Version*> * data_versions_p =  mvcc_data_[tbl_type][key];
     uint64 begin_ts, end_ts;
     // This works under the assumption that we have the deque sorted in decreasing order
     Version *right_version = NULL;
@@ -214,11 +213,9 @@ bool MVCCStorage::CheckWrite(Key key, Version* read_version, Txn* current_txn, T
   // TODO: Need to check read_version with front?
 
   // mutex locks critical section of acquiring write priviledge
-  int old_value = 0;
-  // We might not need CAS here...
-  // We might have too much locking here.
   front->end_id_.mutex_.Lock();
-  if (front->end_id_.edit_bit.CAS(&old_value, 1)) {
+  if (front->end_id_.edit_bit == 0) {
+    front->end_id_.edit_bit == 1;
     front->end_id_.txn = current_txn;
     front->end_id_.mutex_.Unlock();
     // We leave the timestamp in the front->end_id_.timestamp as INF_INT

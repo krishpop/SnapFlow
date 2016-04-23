@@ -70,7 +70,7 @@ class MVCCStorage {
   friend class TxnProcessor;
 
   // MVCC storage: vector of tables (maps with pointer to linked list of versions)
-  // TO DO: pointers to maps or just the maps?
+  // TO DO: pointers to maps or just the maps? currently just maps
   vector<unordered_map<Key, deque<Version*>*>> mvcc_data_;
 
   // Mutexs for each key
