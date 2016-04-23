@@ -224,7 +224,7 @@ class WriteCheck : public Txn {
     vector<bool> val_path;
     for (set<Key>::iterator it = readset_.begin(), vector<bool>::iterator it_v = path_.begin();
      it != readset_.end(); ++it, ++it_v) {
-      if (!ConstructPath(*it, *it_v, val_path)) { // This must be done before committing, right?
+      if (!ValidatePath(*it, *it_v, val_path)) { // This must be done before committing, right?
         return false;
       }
     }
@@ -234,12 +234,12 @@ class WriteCheck : public Txn {
   // Constructs a path and compares with path_ while doing so.
   // Returns true if the constructed path matches with path_'s, otherwise
   // returns false.
-  bool ConstructPath(const Key& key, const bool& path_value, vector<bool> val_path) {
+  bool ValidatePath(const Key& key, const bool& path_value, vector<bool> val_path) {
     Value result_chk;
     Value result_sav;
     Read(key, &result_chk) // read from checking TODO
     Read(key, &result_sav) // read from savings TODO
-    if (result_sav + result_chk >= V) {
+    if (result_sav + result_chk >= constraint_) {
       // Do necessary operations with V TODO
       if (path_value == true) {
         val_path.push_back(true);
@@ -260,10 +260,28 @@ class WriteCheck : public Txn {
     return true;
   }
 
+  // Note that this function is dependent on the constraint that we
+  // are checking. To add more constraints, this and ValidatePath would
+  // have to change.
+  void ConstructPath(const Key& key, const Value& val, const TableType& table) {
+    Value result_chk;
+    Value result_sav;
+    Read(key, &result_chk, CHECKING); // read from checking TODO
+    Read(key, &result_sav, SAVING); // read from savings TODO
+    if (result_sav + result_chk >= constraint_) {
+        path_.push_back(true);
+    }
+    else {
+        path_.push_back(false);
+    }
+  }
+
   void ReadWriteTable(const TableType& table) {
     // Read everything in readset.
     for (set<Key>::iterator it = readset_[table].begin(); it != readset_[table].end(); ++it) {
       Read(*it, &result, table);
+      // We already read one result in, we need only read in from the other table
+      ConstructPath(*it, result, table);
     }
 
     // Increment length of everything in writeset.
