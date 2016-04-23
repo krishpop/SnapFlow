@@ -128,20 +128,30 @@ class RMW : public Txn {
     return clone;
   }
 
-  virtual void Run() {
-    Value result;
+  void ReadWriteTable(const TableType& table) {
     // Read everything in readset.
-    for (set<Key>::iterator it = readset_.begin(); it != readset_.end(); ++it)
-      Read(*it, &result);
+    for (set<Key>::iterator it = readset_[table].begin(); it != readset_[table].end(); ++it) {
+      Read(*it, &result, table);
+    }
 
     // Increment length of everything in writeset.
-    for (set<Key>::iterator it = writeset_.begin(); it != writeset_.end();
+    for (set<Key>::iterator it = writeset_[table].begin(); it != writeset_[table].end();
          ++it) {
       Version * to_insert = new Version;
       result = 0;
-      Read(*it, &result);
-      Write(*it, result + 1, to_insert);
+      Read(*it, &result, table);
+      Write(*it, result + 1, to_insert, table);
     }
+  }
+
+  virtual void Run() {
+    Value result;
+    TableType table = CHECKING;
+    // Execute everything in our read/write sets for CHECKING
+    ReadWriteTable(table);
+    // Now do the same for the SAVINGS table
+    table = SAVINGS;
+    ReadWriteTable(table);
 
     // Run while loop to simulate the txn logic(duration is time_).
     double begin = GetTime();
@@ -250,22 +260,32 @@ class WriteCheck : public Txn {
     return true;
   }
 
+  void ReadWriteTable(const TableType& table) {
+    // Read everything in readset.
+    for (set<Key>::iterator it = readset_[table].begin(); it != readset_[table].end(); ++it) {
+      Read(*it, &result, table);
+    }
+
+    // Increment length of everything in writeset.
+    for (set<Key>::iterator it = writeset_[table].begin(); it != writeset_[table].end();
+         ++it) {
+      Version * to_insert = new Version;
+      result = 0;
+      Read(*it, &result, table);
+      Write(*it, result + 1, to_insert, table);
+    }
+  }
+
   // TODO: update this Run function to create some kind of struct that checks
   // the path taken through the constraint checks.
   virtual void Run() {
     Value result;
-    // Read everything in readset.
-    for (set<Key>::iterator it = readset_.begin(); it != readset_.end(); ++it)
-      Read(*it, &result);
-
-    // Increment length of everything in writeset.
-    for (set<Key>::iterator it = writeset_.begin(); it != writeset_.end();
-         ++it) {
-      Version * to_insert = new Version;
-      result = 0;
-      Read(*it, &result);
-      Write(*it, result + 1, to_insert);
-    }
+    TableType table = CHECKING;
+    // Execute everything in our read/write sets for CHECKING
+    ReadWriteTable(table);
+    // Now do the same for the SAVINGS table
+    table = SAVINGS;
+    ReadWriteTable(table);
 
     // Run while loop to simulate the txn logic(duration is time_).
     double begin = GetTime();

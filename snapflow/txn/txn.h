@@ -40,6 +40,13 @@ struct Version {
   Timestamp end_id_; // Timestamp of the latest possible transaction to read/write this version
 };
 
+// Moved this from mvcc_storage.h so that a txn is aware what table it needs to access
+// Table can either be checking or savings table
+enum TableType {
+  CHECKING = 0,  // checking storage
+  SAVINGS = 1    // savings storage
+};
+
 class Txn {
  public:
 
@@ -111,21 +118,18 @@ class Txn {
 
   // Set of all keys that may need to be read in order to execute the
   // transaction.
-  set<Key> readset_chk_;
-  set<Key> readset_sav_;
+  // The first entry is readset_chk_. The second is readset_sav_
+  vector<set<Key>> readset_;
 
   // Set of all keys that may be updated when executing the transaction.
-  set<Key> writeset_chk_;
-  set<Key> writeset_sav_;
+  vector<set<Key>> writeset_;
 
   // Results of reads performed by the transaction.
-  map<Key, Version*> reads_chk_;
-  map<Key, Version*> reads_sav_;
+  vector<map<Key, Version*>> reads_;
 
 
   // Key, Value pairs WRITTEN by the transaction.
-  map<Key, Version*> writes_chk_;
-  map<Key, Version*> writes_sav_;
+  vector<map<Key, Version*>> writes_;
 
   // Transaction's current execution status.
   TxnStatus status_;
