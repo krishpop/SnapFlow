@@ -8,6 +8,7 @@
 #include <set>
 #include <string>
 
+#include "txn/edgegraph.h"
 #include "txn/txn.h"
 
 // Immediately commits.
@@ -210,19 +211,43 @@ class WriteCheck : public Txn {
   // struct and compares it with the original one. Returns true if they're
   // the same, returns false otherwise.
   virtual bool Validate() {
-    for (set<Key>::iterator it = readset_.begin(); it != readset_.end(); ++it) {
-      if (!ConstructGraph(*it)) { // This must be done before committing, right?
+    vector<bool> val_path;
+    for (set<Key>::iterator it = readset_.begin(), vector<bool>::iterator it_v = path_.begin();
+     it != readset_.end(); ++it, ++it_v) {
+      if (!ConstructPath(*it, *it_v, val_path)) { // This must be done before committing, right?
         return false;
       }
     }
     return true;
   }
 
-  // Constructs an EdgeGraph and compares with graph_ while doing so.
-  // Returns true if the constructed edge matches with graph_'s, otherwise
+  // Constructs a path and compares with path_ while doing so.
+  // Returns true if the constructed path matches with path_'s, otherwise
   // returns false.
-  bool ConstructGraph(const Key& key) {
-
+  bool ConstructPath(const Key& key, const bool& path_value, vector<bool> val_path) {
+    Value result_chk;
+    Value result_sav;
+    Read(key, &result_chk) // read from checking TODO
+    Read(key, &result_sav) // read from savings TODO
+    if (result_sav + result_chk >= V) {
+      // Do necessary operations with V TODO
+      if (path_value == true) {
+        val_path.push_back(true);
+      }
+      else {
+        return false;
+      }
+    }
+    else {
+      // Do necessary operations with V TODO
+      if (path_value == false) {
+        val_path.push_back(false);
+      }
+      else {
+        return false;
+      }
+    }
+    return true;
   }
 
   // TODO: update this Run function to create some kind of struct that checks
@@ -258,7 +283,12 @@ class WriteCheck : public Txn {
 
  private:
   double time_;
-  EdgeGraph graph_;
+  // This is the path of the binary (for now) tree that we must compare
+  // against when validating for write-skew.
+  vector<bool> path_;
+  // For WriteCheck txns, constraint_ is the upper bound on how much
+  // money the customer must have for the txn to not penalize him/her.
+  Value constraint_;
 };
 
 #endif  // _TXN_TYPES_H_
