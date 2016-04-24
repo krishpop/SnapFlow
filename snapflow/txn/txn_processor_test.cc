@@ -26,7 +26,7 @@ class LoadGen {
 class WCLoadGen : public LoadGen {
  public:
   WCLoadGen(int dbsize, int csetsize, double wait_time)
-    : dbsize_(dbsize), 
+    : dbsize_(dbsize),
     csetsize_(csetsize),
     wait_time_(wait_time) {
   }
@@ -84,6 +84,28 @@ class RMWLoadGen2 : public LoadGen {
   int dbsize_;
   int rsetsize_;
   int wsetsize_;
+  double wait_time_;
+};
+
+class WriteSkewLoadGen : public LoadGen {
+ public:
+  WriteSkewLoadGen(int dbsize, int csetsize, double wait_time)
+    : dbsize_(dbsize),
+    csetsize_(csetsize),
+    wait_time_(wait_time) {
+  }
+
+  virtual Txn* NewTxn() {
+    // 50% of transactions WithdrawSavings and 50% WriteCheck from checking
+    if (rand() % 100 < 50)
+      return new WriteCheck(dbsize_, csetsize_, wait_time_);
+    else
+      return new WithdrawSavings(dbsize_, csetsize_, wait_time_);
+  }
+
+ private:
+  int dbsize_;
+  int csetsize_;
   double wait_time_;
 };
 
@@ -281,9 +303,9 @@ int main(int argc, char** argv) {
 
   // CSI tests
   cout << "'Low contention' WC TXNs (5 records)" << endl;
-  lg.push_back(new WCLoadGen(1000000, 5, 0.0001));
-  lg.push_back(new WCLoadGen(1000000, 5, 0.001));
-  lg.push_back(new WCLoadGen(1000000, 5, 0.01));
+  lg.push_back(new WriteSkewLoadGen(1000000, 5, 0.0001));
+  lg.push_back(new WriteSkewLoadGen(1000000, 5, 0.001));
+  lg.push_back(new WriteSkewLoadGen(1000000, 5, 0.01));
 
   Benchmark(lg);
 
@@ -292,9 +314,9 @@ int main(int argc, char** argv) {
   lg.clear();
 
   cout << "'Low contention' WC TXNs (20 records)" << endl;
-  lg.push_back(new WCLoadGen(1000000, 20, 0.0001));
-  lg.push_back(new WCLoadGen(1000000, 20, 0.001));
-  lg.push_back(new WCLoadGen(1000000, 20, 0.01));
+  lg.push_back(new WriteSkewLoadGen(1000000, 20, 0.0001));
+  lg.push_back(new WriteSkewLoadGen(1000000, 20, 0.001));
+  lg.push_back(new WriteSkewLoadGen(1000000, 20, 0.01));
 
   Benchmark(lg);
 
@@ -303,9 +325,9 @@ int main(int argc, char** argv) {
   lg.clear();
 
   cout << "'High contention' WC TXNs (20 records)" << endl;
-  lg.push_back(new WCLoadGen(100, 20, 0.0001));
-  lg.push_back(new WCLoadGen(100, 20, 0.001));
-  lg.push_back(new WCLoadGen(100, 20, 0.01));
+  lg.push_back(new WriteSkewLoadGen(100, 20, 0.0001));
+  lg.push_back(new WriteSkewLoadGen(100, 20, 0.001));
+  lg.push_back(new WriteSkewLoadGen(100, 20, 0.01));
 
   Benchmark(lg);
 
