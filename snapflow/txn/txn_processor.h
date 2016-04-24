@@ -71,7 +71,7 @@ class TxnProcessor {
 
   void GetBeginTimestamp(Txn* txn);
 
-  void GetEndTimestamp(Txn* txn);
+  void GetEndTimestamp(Txn* txn, const bool& val = true);
 
   void GetReads(Txn* txn);
 
@@ -89,11 +89,13 @@ class TxnProcessor {
   void RunSnapshotScheduler();
 
   // run our new version
-  void RunNewScheduler();
+  void RunCSIScheduler();
 
   void GarbageCollection();
 
   void SnapshotExecuteTxn(Txn* txn);
+
+  void CSIExecuteTxn(Txn* txn);
 
   // Concurrency control mechanism the TxnProcessor is currently using.
   CCMode mode_;

@@ -65,7 +65,7 @@ Txn* TxnProcessor::GetTxnResult() {
 void TxnProcessor::RunScheduler() {
   switch (mode_) {
     case SI:                 RunSnapshotScheduler();
-    case CSI:                RunNewScheduler();
+    case CSI:                RunCSIScheduler();
   }
 }
 
@@ -81,11 +81,13 @@ void TxnProcessor::GetBeginTimestamp(Txn* txn) {
   mutex_.Unlock();
 }
 
-void TxnProcessor::GetEndTimestamp(Txn* txn) {
+void TxnProcessor::GetEndTimestamp(Txn* txn, const bool& val) {
 
   mutex_.Lock();
   txn->end_unique_id_ = next_unique_id_;
-  // txn->status_ = COMMITTED;
+  if (!val) {
+    txn->status_ = COMMITTED;
+  }
   next_unique_id_++;
   mutex_.Unlock();
 }
@@ -205,7 +207,7 @@ void TxnProcessor::EmptyReadWrites(Txn* txn) {
   txn->writes_[SAVINGS].empty();
 }
 
-void TxnProcessor::SnapshotExecuteTxn(Txn* txn) {
+void TxnProcessor::CSIExecuteTxn(Txn* txn) {
   // Begin stage
   GetBeginTimestamp(txn);
 
@@ -253,6 +255,44 @@ void TxnProcessor::SnapshotExecuteTxn(Txn* txn) {
   }
 }
 
+void TxnProcessor::SnapshotExecuteTxn(Txn* txn) {
+
+
+  GetBeginTimestamp(txn);
+
+  GetReads(txn);
+
+  if (!CheckWrites(txn)) {
+    Txn* copy = txn->clone();
+    txn->status_ = ABORTED;
+    EmptyReadWrites(txn);
+    // Copy txn
+    txn_requests_.Push(copy);
+    return;
+  }
+    
+  if (txn->Status() == ACTIVE) {
+    txn->Run();
+    if (txn->Status() != ABORTED) {
+      FinishWrites(txn);
+      bool val = false;
+      GetEndTimestamp(txn, val);
+    }
+    // If it's aborted here, it is a permanent abort
+    else {
+      
+      EmptyReadWrites(txn);
+      txn_results_.Push(txn);
+      
+    }
+  }
+
+  if (txn->Status() == COMMITTED){
+    PutEndTimestamps(txn);
+    txn_results_.Push(txn);
+  }
+}
+
 
 void TxnProcessor::RunSnapshotScheduler() {
   Txn* txn;
@@ -268,6 +308,14 @@ void TxnProcessor::RunSnapshotScheduler() {
 
 /////////////////////// END OF CONSTRAINT SNAPSHOT EXECUTION /////////////////////////////
 
-void TxnProcessor::RunNewScheduler() {
-  return;
+void TxnProcessor::RunCSIScheduler() {
+  Txn* txn;
+  while (tp_.Active()) {
+    if (txn_requests_.Pop(&txn)) {
+      tp_.RunTask(new Method<TxnProcessor, void, Txn*>(
+            this,
+            &TxnProcessor::CSIExecuteTxn,
+            txn));
+    }
+  }
 }

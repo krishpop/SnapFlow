@@ -148,22 +148,28 @@ class RMW : public Txn {
 
     // Find readsetsize unique read keys.
     TableType table = CHECKING;
+    int split;
     // Fill CHECKING table with split # of random keys
-    int split = rand() % readsetsize;
-    InitReadSet(split, table, dbsize);
+    if (readsetsize != 0) {
+      split = rand() % readsetsize;
+      InitReadSet(split, table, dbsize);
 
 
-    // We fill the SAVINGS table with readsetsize - split random keys
-    table = SAVINGS;
-    InitReadSet(readsetsize - split, table, dbsize);
+      // We fill the SAVINGS table with readsetsize - split random keys
+      table = SAVINGS;
+      InitReadSet(readsetsize - split, table, dbsize);
+    }
+    
+    if (writesetsize != 0) {
+      split = rand() % writesetsize;
+      table = CHECKING;
+      // Find writesetsize unique write keys.
+      InitWriteSet(split, table, dbsize);
 
-    split = rand() % writesetsize;
-    table = CHECKING;
-    // Find writesetsize unique write keys.
-    InitWriteSet(split, table, dbsize);
-
-    table = SAVINGS;
-    InitWriteSet(writesetsize - split, table, dbsize);
+      table = SAVINGS;
+      InitWriteSet(writesetsize - split, table, dbsize);
+    }
+    
 
   }
 
@@ -229,13 +235,34 @@ class WriteCheck : public Txn {
     writeset_ = writeset;
   }
 
+  void InitPrivateSets() {
+    set<Key> temp1;
+    set<Key> temp2;
+    readset_.push_back(temp1);
+    readset_.push_back(temp2);
+    set<Key> temp3;
+    set<Key> temp4;
+    writeset_.push_back(temp3);
+    writeset_.push_back(temp4);
+
+    map<Key, Version*> t1;
+    map<Key, Version*> t2;
+    reads_.push_back(t1);
+    reads_.push_back(t2);
+    map<Key, Version*> t3;
+    map<Key, Version*> t4;
+    writes_.push_back(t3);
+    writes_.push_back(t4);
+
+  }
+
   // Constructor with randomized read sets
   // Required: readsetsize == writesetsize
   WriteCheck(int dbsize, int setsize, double time = 0)
       : time_(time) {
     // Make sure we can find enough unique keys.
     DCHECK(dbsize >= 2*setsize);
-
+    InitPrivateSets();
     // Find setsize unique read keys.
     for (int i = 0; i < setsize; i++) {
       Key key;

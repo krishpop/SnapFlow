@@ -242,41 +242,41 @@ int main(int argc, char** argv) {
   //   delete lg[i];
   // lg.clear();
 
-  // cout << "High contention read-write (5 records)" << endl;
-  // lg.push_back(new RMWLoadGen(100, 0, 5, 0.0001));
-  // lg.push_back(new RMWLoadGen(100, 0, 5, 0.001));
-  // lg.push_back(new RMWLoadGen(100, 0, 5, 0.01));
+  cout << "High contention read-write (5 records)" << endl;
+  lg.push_back(new RMWLoadGen(100, 0, 5, 0.0001));
+  lg.push_back(new RMWLoadGen(100, 0, 5, 0.001));
+  lg.push_back(new RMWLoadGen(100, 0, 5, 0.01));
 
-  // Benchmark(lg);
+  Benchmark(lg);
 
-  // for (uint32 i = 0; i < lg.size(); i++)
-  //   delete lg[i];
-  // lg.clear();
+  for (uint32 i = 0; i < lg.size(); i++)
+    delete lg[i];
+  lg.clear();
 
-  // cout << "High contention read-write (10 records)" << endl;
-  // lg.push_back(new RMWLoadGen(100, 0, 10, 0.0001));
-  // lg.push_back(new RMWLoadGen(100, 0, 10, 0.001));
-  // lg.push_back(new RMWLoadGen(100, 0, 10, 0.01));
+  cout << "High contention read-write (10 records)" << endl;
+  lg.push_back(new RMWLoadGen(100, 0, 10, 0.0001));
+  lg.push_back(new RMWLoadGen(100, 0, 10, 0.001));
+  lg.push_back(new RMWLoadGen(100, 0, 10, 0.01));
 
-  // Benchmark(lg);
+  Benchmark(lg);
 
-  // for (uint32 i = 0; i < lg.size(); i++)
-  //   delete lg[i];
-  // lg.clear();
+  for (uint32 i = 0; i < lg.size(); i++)
+    delete lg[i];
+  lg.clear();
 
-  // // 80% of transactions are READ only transactions and run for the full
-  // // transaction duration. The rest are very fast (< 0.1ms), high-contention
-  // // updates.
-  // cout << "High contention mixed read only/read-write " << endl;
-  // lg.push_back(new RMWLoadGen2(50, 30, 10, 0.0001));
-  // lg.push_back(new RMWLoadGen2(50, 30, 10, 0.001));
-  // lg.push_back(new RMWLoadGen2(50, 30, 10, 0.01));
+  // 80% of transactions are READ only transactions and run for the full
+  // transaction duration. The rest are very fast (< 0.1ms), high-contention
+  // updates.
+  cout << "High contention mixed read only/read-write " << endl;
+  lg.push_back(new RMWLoadGen2(50, 30, 10, 0.0001));
+  lg.push_back(new RMWLoadGen2(50, 30, 10, 0.001));
+  lg.push_back(new RMWLoadGen2(50, 30, 10, 0.01));
 
-  // Benchmark(lg);
+  Benchmark(lg);
 
-  // for (uint32 i = 0; i < lg.size(); i++)
-  //   delete lg[i];
-  // lg.clear();
+  for (uint32 i = 0; i < lg.size(); i++)
+    delete lg[i];
+  lg.clear();
 
 
   // CSI tests

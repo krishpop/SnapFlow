@@ -8,7 +8,6 @@
 #include <set>
 #include <string>
 
-#include "txn/edgegraph.h"
 #include "txn/txn.h"
 
 // Immediately commits.
@@ -162,134 +161,134 @@ class RMW : public Txn {
 };
 
 
-// WriteCheck txns to deal with write-skew (used by a Checking/Savings system)
-class WriteCheck : public Txn {
- public:
-  explicit WriteCheck(double time = 0) : time_(time) {}
-  WriteCheck(const set<Key>& writeset, double time = 0) : time_(time) {
-    writeset_ = writeset;
-  }
-  WriteCheck(const set<Key>& readset, const set<Key>& writeset, double time = 0)
-      : time_(time) {
-    readset_ = readset;
-    writeset_ = writeset;
-  }
+// // WriteCheck txns to deal with write-skew (used by a Checking/Savings system)
+// class WriteCheck : public Txn {
+//  public:
+//   explicit WriteCheck(double time = 0) : time_(time) {}
+//   WriteCheck(const set<Key>& writeset, double time = 0) : time_(time) {
+//     writeset_ = writeset;
+//   }
+//   WriteCheck(const set<Key>& readset, const set<Key>& writeset, double time = 0)
+//       : time_(time) {
+//     readset_ = readset;
+//     writeset_ = writeset;
+//   }
 
-  // Constructor with randomized read/write sets
-  WriteCheck(int dbsize, int readsetsize, int writesetsize, double time = 0)
-      : time_(time) {
-    // Make sure we can find enough unique keys.
-    DCHECK(dbsize >= readsetsize + writesetsize);
+//   // Constructor with randomized read/write sets
+//   WriteCheck(int dbsize, int readsetsize, int writesetsize, double time = 0)
+//       : time_(time) {
+//     // Make sure we can find enough unique keys.
+//     DCHECK(dbsize >= readsetsize + writesetsize);
 
-    // Find readsetsize unique read keys.
-    for (int i = 0; i < readsetsize; i++) {
-      Key key;
-      do {
-        key = rand() % dbsize;
-      } while (readset_.count(key));
-      readset_.insert(key);
-    }
+//     // Find readsetsize unique read keys.
+//     for (int i = 0; i < readsetsize; i++) {
+//       Key key;
+//       do {
+//         key = rand() % dbsize;
+//       } while (readset_.count(key));
+//       readset_.insert(key);
+//     }
 
-    // Find writesetsize unique write keys.
-    for (int i = 0; i < writesetsize; i++) {
-      Key key;
-      do {
-        key = rand() % dbsize;
-      } while (readset_.count(key) || writeset_.count(key));
-      writeset_.insert(key);
-    }
-  }
+//     // Find writesetsize unique write keys.
+//     for (int i = 0; i < writesetsize; i++) {
+//       Key key;
+//       do {
+//         key = rand() % dbsize;
+//       } while (readset_.count(key) || writeset_.count(key));
+//       writeset_.insert(key);
+//     }
+//   }
 
-  WriteCheck* clone() const {             // Virtual constructor (copying)
-    WriteCheck* clone = new WriteCheck(time_);
-    this->CopyTxnInternals(clone);
-    return clone;
-  }
+//   WriteCheck* clone() const {             // Virtual constructor (copying)
+//     WriteCheck* clone = new WriteCheck(time_);
+//     this->CopyTxnInternals(clone);
+//     return clone;
+//   }
 
-  // Just readset?
-  // This functions checks our readset again and creates a constraint checking
-  // struct and compares it with the original one. Returns true if they're
-  // the same, returns false otherwise.
-  virtual bool Validate() {
-    vector<bool> val_path;
-    for (set<Key>::iterator it = readset_.begin(), vector<bool>::iterator it_v = path_.begin();
-     it != readset_.end(); ++it, ++it_v) {
-      if (!ConstructPath(*it, *it_v, val_path)) { // This must be done before committing, right?
-        return false;
-      }
-    }
-    return true;
-  }
+//   // Just readset?
+//   // This functions checks our readset again and creates a constraint checking
+//   // struct and compares it with the original one. Returns true if they're
+//   // the same, returns false otherwise.
+//   virtual bool Validate() {
+//     vector<bool> val_path;
+//     for (set<Key>::iterator it = readset_.begin(), vector<bool>::iterator it_v = path_.begin();
+//      it != readset_.end(); ++it, ++it_v) {
+//       if (!ConstructPath(*it, *it_v, val_path)) { // This must be done before committing, right?
+//         return false;
+//       }
+//     }
+//     return true;
+//   }
 
-  // Constructs a path and compares with path_ while doing so.
-  // Returns true if the constructed path matches with path_'s, otherwise
-  // returns false.
-  bool ConstructPath(const Key& key, const bool& path_value, vector<bool> val_path) {
-    Value result_chk;
-    Value result_sav;
-    Read(key, &result_chk) // read from checking TODO
-    Read(key, &result_sav) // read from savings TODO
-    if (result_sav + result_chk >= V) {
-      // Do necessary operations with V TODO
-      if (path_value == true) {
-        val_path.push_back(true);
-      }
-      else {
-        return false;
-      }
-    }
-    else {
-      // Do necessary operations with V TODO
-      if (path_value == false) {
-        val_path.push_back(false);
-      }
-      else {
-        return false;
-      }
-    }
-    return true;
-  }
+//   // Constructs a path and compares with path_ while doing so.
+//   // Returns true if the constructed path matches with path_'s, otherwise
+//   // returns false.
+//   bool ConstructPath(const Key& key, const bool& path_value, vector<bool> val_path) {
+//     Value result_chk;
+//     Value result_sav;
+//     Read(key, &result_chk) // read from checking TODO
+//     Read(key, &result_sav) // read from savings TODO
+//     if (result_sav + result_chk >= V) {
+//       // Do necessary operations with V TODO
+//       if (path_value == true) {
+//         val_path.push_back(true);
+//       }
+//       else {
+//         return false;
+//       }
+//     }
+//     else {
+//       // Do necessary operations with V TODO
+//       if (path_value == false) {
+//         val_path.push_back(false);
+//       }
+//       else {
+//         return false;
+//       }
+//     }
+//     return true;
+//   }
 
-  // TODO: update this Run function to create some kind of struct that checks
-  // the path taken through the constraint checks.
-  virtual void Run() {
-    Value result;
-    // Read everything in readset.
-    for (set<Key>::iterator it = readset_.begin(); it != readset_.end(); ++it)
-      Read(*it, &result);
+//   // TODO: update this Run function to create some kind of struct that checks
+//   // the path taken through the constraint checks.
+//   virtual void Run() {
+//     Value result;
+//     // Read everything in readset.
+//     for (set<Key>::iterator it = readset_.begin(); it != readset_.end(); ++it)
+//       Read(*it, &result);
 
-    // Increment length of everything in writeset.
-    for (set<Key>::iterator it = writeset_.begin(); it != writeset_.end();
-         ++it) {
-      Version * to_insert = new Version;
-      result = 0;
-      Read(*it, &result);
-      Write(*it, result + 1, to_insert);
-    }
+//     // Increment length of everything in writeset.
+//     for (set<Key>::iterator it = writeset_.begin(); it != writeset_.end();
+//          ++it) {
+//       Version * to_insert = new Version;
+//       result = 0;
+//       Read(*it, &result);
+//       Write(*it, result + 1, to_insert);
+//     }
 
-    // Run while loop to simulate the txn logic(duration is time_).
-    double begin = GetTime();
-    while (GetTime() - begin < time_) {
-      for (int i = 0;i < 1000; i++) {
-        int x = 100;
-        x = x + 2;
-        x = x*x;
-      }
-    }
+//     // Run while loop to simulate the txn logic(duration is time_).
+//     double begin = GetTime();
+//     while (GetTime() - begin < time_) {
+//       for (int i = 0;i < 1000; i++) {
+//         int x = 100;
+//         x = x + 2;
+//         x = x*x;
+//       }
+//     }
     
-    // For SI we do not want to set the status at txn execution time.
-    //COMMIT;
-  }
+//     // For SI we do not want to set the status at txn execution time.
+//     //COMMIT;
+//   }
 
- private:
-  double time_;
-  // This is the path of the binary (for now) tree that we must compare
-  // against when validating for write-skew.
-  vector<bool> path_;
-  // For WriteCheck txns, constraint_ is the upper bound on how much
-  // money the customer must have for the txn to not penalize him/her.
-  Value constraint_;
-};
+//  private:
+//   double time_;
+//   // This is the path of the binary (for now) tree that we must compare
+//   // against when validating for write-skew.
+//   vector<bool> path_;
+//   // For WriteCheck txns, constraint_ is the upper bound on how much
+//   // money the customer must have for the txn to not penalize him/her.
+//   Value constraint_;
+// };
 
 #endif  // _TXN_TYPES_H_
 
