@@ -117,11 +117,11 @@ void TxnProcessor::GetValidationReads(Txn* txn) {
      it != txn->constraintset_.end(); ++it) {
 
     Version * result = NULL;
-    if (storage_->Read(*it, &result, txn->end_unique_id_, CHECKING)) {
+    if (storage_->Read(*it, &result, txn->end_unique_id_, CHECKING, true)) {
       txn->reads_[CHECKING][*it] = result;
     }
     Version * result = NULL;
-    if (storage_->Read(*it, &result, txn->end_unique_id_, SAVINGS)) {
+    if (storage_->Read(*it, &result, txn->end_unique_id_, SAVINGS, true)) {
       txn->reads_[SAVINGS][*it] = result;
     }
   }
@@ -233,8 +233,8 @@ void TxnProcessor::SnapshotExecuteTxn(Txn* txn) {
     return;
   }
 
-  GetEndTimestamp(txn);
   FinishWrites(txn);
+  GetEndTimestamp(txn);
   GetValidationReads(txn);
 
   if (txn->Validate()) {
