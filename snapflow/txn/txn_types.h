@@ -103,7 +103,7 @@ class RMW : public Txn {
         key = rand() % dbsize;
       } while (readset_[table].count(key));
       readset_[table].insert(key);
-  
+
     }
   }
 
@@ -159,7 +159,7 @@ class RMW : public Txn {
       table = SAVINGS;
       InitReadSet(readsetsize - split, table, dbsize);
     }
-    
+
     if (writesetsize != 0) {
       split = rand() % writesetsize;
       table = CHECKING;
@@ -169,7 +169,7 @@ class RMW : public Txn {
       table = SAVINGS;
       InitWriteSet(writesetsize - split, table, dbsize);
     }
-    
+
 
   }
 
@@ -431,6 +431,27 @@ class WithdrawSavings : public Txn {
 
   }
 
+  void InitPrivateSets() {
+    set<Key> temp1;
+    set<Key> temp2;
+    readset_.push_back(temp1);
+    readset_.push_back(temp2);
+    set<Key> temp3;
+    set<Key> temp4;
+    writeset_.push_back(temp3);
+    writeset_.push_back(temp4);
+
+    map<Key, Version*> t1;
+    map<Key, Version*> t2;
+    reads_.push_back(t1);
+    reads_.push_back(t2);
+    map<Key, Version*> t3;
+    map<Key, Version*> t4;
+    writes_.push_back(t3);
+    writes_.push_back(t4);
+
+  }
+
   WriteCheck* clone() const {             // Virtual constructor (copying)
     WriteCheck* clone = new WriteCheck(time_);
     this->CopyTxnInternals(clone);
@@ -461,7 +482,7 @@ class WithdrawSavings : public Txn {
     // Here we read from both Checking and Saving tables and store those results
     // in result_chk and result_sav respectively.
     GetChkAndSav(key, result_chk, result_sav);
-    
+
     // As we construct the val_path, we check with the given path_value.
     if (result_sav + result_chk >= constraint_) {
       if (!path_value) {
@@ -516,7 +537,7 @@ class WithdrawSavings : public Txn {
   // TODO: update this Run function to create some kind of struct that checks
   // the path taken through the constraint checks.
   virtual void Run() {
-    
+
     // Execute everything in our read/write sets for Constraintset
     ReadWrite();
 
@@ -529,7 +550,7 @@ class WithdrawSavings : public Txn {
         x = x*x;
       }
     }
-    
+
     // For SI we do not want to set the status at txn execution time.
     //COMMIT;
   }
