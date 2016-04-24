@@ -243,9 +243,12 @@ void TxnProcessor::CSIExecuteTxn(Txn* txn) {
     txn->status_ = COMMITTED;
   }
   else {
+    Txn* copy = txn->clone();
     txn->status_ = ABORTED;
     EmptyReadWrites(txn);
-    txn_results_.Push(txn);
+    // Copy txn
+    txn_requests_.Push(copy);
+    return;
   }
 
   // Postprocessing Phase
