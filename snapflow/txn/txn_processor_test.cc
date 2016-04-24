@@ -302,7 +302,7 @@ int main(int argc, char** argv) {
 
 
   // CSI tests
-  cout << "'Low contention' WC TXNs (5 records)" << endl;
+  cout << "'Low contention' WC and WS TXNs (5 records)" << endl;
   lg.push_back(new WriteSkewLoadGen(1000000, 5, 0.0001));
   lg.push_back(new WriteSkewLoadGen(1000000, 5, 0.001));
   lg.push_back(new WriteSkewLoadGen(1000000, 5, 0.01));
@@ -313,7 +313,7 @@ int main(int argc, char** argv) {
     delete lg[i];
   lg.clear();
 
-  cout << "'Low contention' WC TXNs (20 records)" << endl;
+  cout << "'Low contention' WC and WS TXNs (20 records)" << endl;
   lg.push_back(new WriteSkewLoadGen(1000000, 20, 0.0001));
   lg.push_back(new WriteSkewLoadGen(1000000, 20, 0.001));
   lg.push_back(new WriteSkewLoadGen(1000000, 20, 0.01));
@@ -324,7 +324,7 @@ int main(int argc, char** argv) {
     delete lg[i];
   lg.clear();
 
-  cout << "'High contention' WC TXNs (20 records)" << endl;
+  cout << "'High contention' WC and WS TXNs (20 records)" << endl;
   lg.push_back(new WriteSkewLoadGen(100, 20, 0.0001));
   lg.push_back(new WriteSkewLoadGen(100, 20, 0.001));
   lg.push_back(new WriteSkewLoadGen(100, 20, 0.01));
