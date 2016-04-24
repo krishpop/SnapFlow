@@ -26,9 +26,9 @@ class LoadGen {
 class WCLoadGen : public LoadGen {
  public:
   WCLoadGen(int dbsize, int csetsize, double wait_time)
-    : dbsize_(dbsize),
-      wait_time_(wait_time),
-      csetsize_(csetsize), {
+    : dbsize_(dbsize), 
+    csetsize_(csetsize),
+    wait_time_(wait_time) {
   }
 
   virtual Txn* NewTxn() {

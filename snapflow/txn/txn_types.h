@@ -346,7 +346,7 @@ class WriteCheck : public Txn {
 // WithdrawSavings txns to deal with write-skew (used by a Checking/Savings system)
 // This txn type contains a constraint set that writes the Savings table by checking
 // both Savings and Checking.
-class WriteCheck : public Txn {
+class WithdrawSavings : public Txn {
  public:
   explicit WithdrawSavings(double time = 0) : time_(time) {}
   WithdrawSavings(const vector<set<Key>>& writeset, double time = 0) : time_(time) {
