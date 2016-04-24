@@ -120,7 +120,7 @@ void TxnProcessor::GetValidationReads(Txn* txn) {
     if (storage_->Read(*it, &result, txn->end_unique_id_, CHECKING, true)) {
       txn->reads_[CHECKING][*it] = result;
     }
-    Version * result = NULL;
+    result = NULL;
     if (storage_->Read(*it, &result, txn->end_unique_id_, SAVINGS, true)) {
       txn->reads_[SAVINGS][*it] = result;
     }
