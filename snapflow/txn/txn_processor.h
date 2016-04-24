@@ -24,7 +24,7 @@ using std::string;
 
 enum CCMode {
   SI = 0,                  // Snapshot isolation (by Larson)
-  NEW = 1                // Our new control flow algo
+  CSI = 1                // Our new control flow algo
 };
 
 
