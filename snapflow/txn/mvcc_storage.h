@@ -17,11 +17,6 @@ using std::deque;
 using std::map;
 using std::vector;
 
-// Table can either be checking or savings table
-enum TableType {
-  CHECKING = 0,  // checking storage
-  SAVINGS = 1    // savings storage
-};
 
 // MVCC storage
 class MVCCStorage {

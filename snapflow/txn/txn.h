@@ -65,7 +65,7 @@ class Txn {
 
   // Checks for overlap in read and write sets. If any key appears in both,
   // an error occurs.
-  void CheckReadWriteSets();
+  // void CheckReadWriteSets();
 
   // Returns the Txn's current execution status.
   TxnStatus Status() { return status_; }
@@ -89,7 +89,7 @@ class Txn {
   // Requires: key appears in readset or writeset
   //
   // Note: Can ONLY be called from inside the 'Execute()' function.
-  bool Read(const Key& key, Value* value);
+  bool Read(const Key& key, Value* value, const TableType&);
 
   // Method to be used inside 'Execute()' function when writing records to
   // the database.
@@ -97,7 +97,7 @@ class Txn {
   // Requires: key appears in writeset
   //
   // Note: Can ONLY be called from inside the 'Execute()' function.
-  void Write(const Key& key, const Value& value, Version*);
+  void Write(const Key& key, const Value& value, Version*, const TableType&);
 
   // Macro to be used inside 'Execute()' function when deciding to COMMIT.
   //

@@ -169,7 +169,7 @@ void TxnProcessor::PutEndTimestamps(Txn* txn) {
      it != txn->writes_[CHECKING].end(); ++it) {
 
     // first is the old version, 2nd is new version
-    storage_->PutEndTimestamp(txn->reads_[CHECKING][it->first], txn->writes_[CHECKING][it->first], txn->end_unique_id_, CHECKING);
+    storage_->PutEndTimestamp(txn->reads_[CHECKING][it->first], txn->writes_[CHECKING][it->first], txn->end_unique_id_);
 
   }
 
@@ -177,7 +177,7 @@ void TxnProcessor::PutEndTimestamps(Txn* txn) {
      it != txn->writes_[SAVINGS].end(); ++it) {
 
     // first is the old version, 2nd is new version
-    storage_->PutEndTimestamp(txn->reads_[SAVINGS][it->first], txn->writes_[SAVINGS][it->first], txn->end_unique_id_, SAVINGS);
+    storage_->PutEndTimestamp(txn->reads_[SAVINGS][it->first], txn->writes_[SAVINGS][it->first], txn->end_unique_id_);
 
   }
 
@@ -223,13 +223,6 @@ void TxnProcessor::SnapshotExecuteTxn(Txn* txn) {
   if (txn->Status() == COMMITTED){
     PutEndTimestamps(txn);
     txn_results_.Push(txn);
-  }
-
-    // atomically attempts to set end field of old versions to infinity
-
-    txn->reads_.empty();
-    txn->writes_.empty();
-    txn_requests_.Push(txn);
   }
 }
 

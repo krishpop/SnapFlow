@@ -51,14 +51,14 @@ void Txn::Write(const Key& key, const Value& value, Version * to_insert, const T
   //reads_[key] = value;
 }
 
-void Txn::CheckReadWriteSets() {
-  for (set<Key>::iterator it = writeset_.begin();
-       it != writeset_.end(); ++it) {
-    if (readset_.count(*it) > 0) {
-      DIE("Overlapping read/write sets\n.");
-    }
-  }
-}
+// void Txn::CheckReadWriteSets() {
+//   for (set<Key>::iterator it = writeset_.begin();
+//        it != writeset_.end(); ++it) {
+//     if (readset_.count(*it) > 0) {
+//       DIE("Overlapping read/write sets\n.");
+//     }
+//   }
+// }
 
 void Txn::CopyTxnInternals(Txn* txn) const {
   txn->readset_ = vector<set<Key>>(this->readset_);

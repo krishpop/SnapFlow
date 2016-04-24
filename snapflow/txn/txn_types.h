@@ -8,7 +8,6 @@
 #include <set>
 #include <string>
 
-#include "txn/edgegraph.h"
 #include "txn/txn.h"
 
 // Immediately commits.
@@ -26,72 +25,72 @@ class Noop : public Txn {
 
 // Reads all keys in the map 'm', if all results correspond to the values in
 // the provided map, commits, else aborts.
-class Expect : public Txn {
- public:
-  Expect(const map<Key, Value>& m) : m_(m) {
-    for (map<Key, Value>::iterator it = m_.begin(); it != m_.end(); ++it)
-      readset_.insert(it->first);
-  }
+// class Expect : public Txn {
+//  public:
+//   Expect(const map<Key, Value>& m) : m_(m) {
+//     for (map<Key, Value>::iterator it = m_.begin(); it != m_.end(); ++it)
+//       readset_.insert(it->first);
+//   }
 
-  Expect* clone() const {             // Virtual constructor (copying)
-    Expect* clone = new Expect(map<Key, Value>(m_));
-    this->CopyTxnInternals(clone);
-    return clone;
-  }
+//   Expect* clone() const {             // Virtual constructor (copying)
+//     Expect* clone = new Expect(map<Key, Value>(m_));
+//     this->CopyTxnInternals(clone);
+//     return clone;
+//   }
 
-  virtual void Run() {
-    Value result;
-    for (map<Key, Value>::iterator it = m_.begin(); it != m_.end(); ++it) {
-      // If we didn't find it, this txn is doomed to fail, do not retry.
-      if (!Read(it->first, &result)) {
-        ABORT;
-      }
-      // If we find it and there is another value => write skew problem?
-      // else if (result != it->second) {
-      //   printf("write-skew?\n");
-      // }
-    }
-    //COMMIT;
-  }
+//   virtual void Run() {
+//     Value result;
+//     for (map<Key, Value>::iterator it = m_.begin(); it != m_.end(); ++it) {
+//       // If we didn't find it, this txn is doomed to fail, do not retry.
+//       if (!Read(it->first, &result)) {
+//         ABORT;
+//       }
+//       // If we find it and there is another value => write skew problem?
+//       // else if (result != it->second) {
+//       //   printf("write-skew?\n");
+//       // }
+//     }
+//     //COMMIT;
+//   }
 
- private:
-  map<Key, Value> m_;
-};
+//  private:
+//   map<Key, Value> m_;
+// };
 
-// Inserts all pairs in the map 'm'.
-class Put : public Txn {
- public:
-  Put(const map<Key, Value>& m) : m_(m) {
-    for (map<Key, Value>::iterator it = m_.begin(); it != m_.end(); ++it)
-      writeset_.insert(it->first);
-  }
+// // Inserts all pairs in the map 'm'.
+// class Put : public Txn {
+//  public:
+//   Put(const map<Key, Value>& m) : m_(m) {
+//     for (map<Key, Value>::iterator it = m_.begin(); it != m_.end(); ++it)
+//       writeset_.insert(it->first);
+//   }
 
-  Put* clone() const {             // Virtual constructor (copying)
-    Put* clone = new Put(map<Key, Value>(m_));
-    this->CopyTxnInternals(clone);
-    return clone;
-  }
+//   Put* clone() const {             // Virtual constructor (copying)
+//     Put* clone = new Put(map<Key, Value>(m_));
+//     this->CopyTxnInternals(clone);
+//     return clone;
+//   }
 
-  virtual void Run() {
-    for (map<Key, Value>::iterator it = m_.begin(); it != m_.end(); ++it) {
-      Version * to_insert = new Version;
-      Write(it->first, it->second, to_insert);
-    }
-    //COMMIT;
-  }
+//   virtual void Run() {
+//     for (map<Key, Value>::iterator it = m_.begin(); it != m_.end(); ++it) {
+//       Version * to_insert = new Version;
+//       Write(it->first, it->second, to_insert);
+//     }
+//     //COMMIT;
+//   }
 
- private:
-  map<Key, Value> m_;
-};
+//  private:
+//   map<Key, Value> m_;
+// };
 
 // Read-modify-write transaction.
 class RMW : public Txn {
  public:
   explicit RMW(double time = 0) : time_(time) {}
-  RMW(const set<Key>& writeset, double time = 0) : time_(time) {
+  RMW(const vector<set<Key>>& writeset, double time = 0) : time_(time) {
     writeset_ = writeset;
   }
-  RMW(const set<Key>& readset, const set<Key>& writeset, double time = 0)
+  RMW(const vector<set<Key>>& readset, const vector<set<Key>>& writeset, double time = 0)
       : time_(time) {
     readset_ = readset;
     writeset_ = writeset;
@@ -197,7 +196,7 @@ class WriteCheck : public Txn {
       Key key;
       do {
         key = rand() % dbsize;
-      } while (readset_.count(key));
+      } while (readset_[SAVINGS].count(key));
       // Even though it is only of the type CHECKING, we note that
       // a WC txn will use the readset_[CHECKING] to look BOTH in
       // checking and savings.
