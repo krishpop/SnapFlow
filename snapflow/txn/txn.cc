@@ -65,6 +65,7 @@ void Txn::CopyTxnInternals(Txn* txn) const {
   txn->writeset_ = vector<set<Key>>(this->writeset_);
   txn->reads_ = vector<map<Key, Version*>>(this->reads_);
   txn->writes_ = vector<map<Key, Version*>>(this->writes_);
+  txn->constraintset_ = set<Key>(this->constraintset_);
   txn->status_ = this->status_;
   txn->unique_id_ = this->unique_id_;
   txn->end_unique_id_ = this->end_unique_id_;

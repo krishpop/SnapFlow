@@ -186,10 +186,11 @@ class WriteCheck : public Txn {
   }
 
   // Constructor with randomized read sets
-  WriteCheck(int dbsize, int readsetsize, double time = 0)
+  // Required: readsetsize == writesetsize
+  WriteCheck(int dbsize, int readsetsize, int writesetsize, double time = 0)
       : time_(time) {
     // Make sure we can find enough unique keys.
-    DCHECK(dbsize >= readsetsize);
+    DCHECK(dbsize >= readsetsize + writesetsize);
 
     // Find readsetsize unique read keys.
     for (int i = 0; i < readsetsize; i++) {
@@ -200,8 +201,9 @@ class WriteCheck : public Txn {
       // Even though it is only of the type CHECKING, we note that
       // a WC txn will use the readset_[CHECKING] to look BOTH in
       // checking and savings.
-      readset_[CHECKING].insert(key);
-      readset_[SAVING].insert(key);
+      readset_[SAVINGS].insert(key);
+      writeset_[CHECKING].insert(key);
+      constraintset_.insert(key);
     }
 
   }
@@ -217,10 +219,9 @@ class WriteCheck : public Txn {
   // struct and compares it with the original one. Returns true if they're
   // the same, returns false otherwise.
   virtual bool Validate() {
-    vector<bool> val_path;
-    for (set<Key>::iterator it = readset_[CHECKING].begin(), vector<bool>::iterator it_v = path_.begin();
-     it != readset_[CHECKING].end(); ++it, ++it_v) {
-      if (!ValidatePath(*it, *it_v, val_path)) { // This must be done before committing, right?
+    for (set<Key>::iterator it = constraintset_.begin(), vector<bool>::iterator it_v = path_.begin();
+     it != constraintset_.end(); ++it, ++it_v) {
+      if (!ValidatePath(*it, *it_v)) { // This must be done before committing, right?
         return false;
       }
     }
@@ -230,33 +231,22 @@ class WriteCheck : public Txn {
   // Constructs a path and compares with path_ while doing so.
   // Returns true if the constructed path matches with path_'s, otherwise
   // returns false.
-  bool ValidatePath(const Key& key, const bool& path_value, vector<bool> val_path) {
+  bool ValidatePath(const Key& key, const bool& path_value) {
     Value result_chk = 0;
     Value result_sav = 0;
 
     // Here we read from both Checking and Saving tables and store those results
     // in result_chk and result_sav respectively.
-    TableType table = CHECKING;
-    GetChkAndSav(result_chk, result_sav, val, table);
-    table = SAVING;
-    GetChkAndSav(result_chk, result_sav, val, table);
+    GetChkAndSav(key, result_chk, result_sav);
     
     // As we construct the val_path, we check with the given path_value.
     if (result_sav + result_chk >= constraint_) {
-      // Do necessary operations with V TODO
-      if (path_value == true) {
-        val_path.push_back(true);
-      }
-      else {
+      if (!path_value) {
         return false;
       }
     }
     else {
-      // Do necessary operations with V TODO
-      if (path_value == false) {
-        val_path.push_back(false);
-      }
-      else {
+      if (path_value) {
         return false;
       }
     }
@@ -265,62 +255,48 @@ class WriteCheck : public Txn {
 
   // this function reads in the appropriate OTHER table from the one we already read in
   // Requires: val is already a value read in from table.
-  void GetChkAndSav(Value& result_chk, Value& result_sav, const Value& val, const TableType& table) {
-    if (table == CHECKING) {
-      result_chk = val;
-      Read(key, &result_sav, SAVING);
-    }
-    else {
-      result_sav = val;
-      Read(key, &result_chk, CHECKING);
-    }
+  void GetChkAndSav(const Key& key, Value& result_chk, Value& result_sav) {
+    Read(key, &result_chk, CHECKING);
+    Read(key, &result_sav, SAVINGS);
   }
 
   // Note that this function is dependent on the constraint that we
   // are checking. To add more constraints, this and ValidatePath would
   // have to change.
-  void ConstructPath(const Key& key, const Value& val, const TableType& table) {
-    Value result_chk;
-    Value result_sav;
-    GetChkAndSav(result_chk, result_sav, val, table);
+  Value ConstructPath(const Key& key, const Value& chk, const Value& sav) {
      // read from savings TODO
-    if (result_sav + result_chk >= constraint_) {
+    Value deduction;
+    if (sav + chk >= constraint_) {
         path_.push_back(true);
+        deduction = constraint_;
     }
     else {
         path_.push_back(false);
+        deduction = constraint_ + 1;
     }
+    return deduction;
   }
 
-  void ReadWriteTable(const TableType& table) {
+  void ReadWrite() {
     // Read everything in readset.
-    for (set<Key>::iterator it = readset_[table].begin(); it != readset_[table].end(); ++it) {
-      Read(*it, &result, table);
+    Value result_chk = 0;
+    Value result_sav = 0;
+    Value deduct;
+    for (set<Key>::iterator it = constraintset_.begin(); it != constraintset_.end(); ++it) {
+      GetChkAndSav(*it, result_chk, result_sav);
       // We already read one result in, we need only read in from the other table
-      ConstructPath(*it, result, table);
-    }
-
-    // Increment length of everything in writeset.
-    // Do we construct a path with the writeset_?
-    for (set<Key>::iterator it = writeset_[table].begin(); it != writeset_[table].end();
-         ++it) {
+      deduct = ConstructPath(*it, result_chk, result_sav);
       Version * to_insert = new Version;
-      result = 0;
-      Read(*it, &result, table);
-      Write(*it, result + 1, to_insert, table);
+      Write(*it, result_chk - deduct, to_insert, CHECKING);
     }
   }
 
   // TODO: update this Run function to create some kind of struct that checks
   // the path taken through the constraint checks.
   virtual void Run() {
-    Value result;
-    TableType table = CHECKING;
-    // Execute everything in our read/write sets for CHECKING
-    ReadWriteTable(table);
-    // Now do the same for the SAVINGS table
-    table = SAVINGS;
-    ReadWriteTable(table);
+    
+    // Execute everything in our read/write sets for Constraintset
+    ReadWrite();
 
     // Run while loop to simulate the txn logic(duration is time_).
     double begin = GetTime();

@@ -97,7 +97,7 @@ void TxnProcessor::GetReads(Txn* txn) {
 
     Version * result = NULL;
     if (storage_->Read(*it, &result, txn->unique_id_, CHECKING)) {
-      txn->reads_[*it] = result;
+      txn->reads_[CHECKING][*it] = result;
     }
   }
 
@@ -106,7 +106,7 @@ void TxnProcessor::GetReads(Txn* txn) {
 
     Version * result = NULL;
     if (storage_->Read(*it, &result, txn->unique_id_, SAVINGS)) {
-      txn->reads_[*it] = result;
+      txn->reads_[SAVINGS][*it] = result;
     }
   }
 
@@ -119,7 +119,7 @@ bool TxnProcessor::CheckWrites(Txn* txn) {
 
     Version * result = NULL;
     if (storage_->Read(*it, &result, txn->unique_id_, CHECKING)) {
-      txn->reads_[*it] = result;
+      txn->reads_[CHECKING][*it] = result;
 
       if (!storage_->CheckWrite(*it, result, txn, CHECKING)) {
         return false;
@@ -132,7 +132,7 @@ bool TxnProcessor::CheckWrites(Txn* txn) {
 
     Version * result = NULL;
     if (storage_->Read(*it, &result, txn->unique_id_, SAVINGS)) {
-      txn->reads_[*it] = result;
+      txn->reads_[SAVINGS][*it] = result;
 
       if (!storage_->CheckWrite(*it, result, txn, SAVINGS)) {
         return false;

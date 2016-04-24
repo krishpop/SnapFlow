@@ -132,6 +132,8 @@ class Txn {
   // Key, Value pairs WRITTEN by the transaction.
   vector<map<Key, Version*>> writes_;
 
+  set<Key> constraintset_;
+
   // Transaction's current execution status.
   TxnStatus status_;
 
