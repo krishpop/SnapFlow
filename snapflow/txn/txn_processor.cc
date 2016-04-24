@@ -222,26 +222,28 @@ void TxnProcessor::SnapshotExecuteTxn(Txn* txn) {
   }
 
 
-  if (txn->Status() == ACTIVE) {
-    txn->Run();
-    if (txn->Status() != ABORTED) {
-      GetEndTimestamp(txn);
-      GetValidationReads(txn);
+  txn->Run();
+  txn->writes_[CHECKING].empty();
+  txn->writes_[SAVINGS].empty();
 
-      if (txn->Validate()) {
-        FinishWrites(txn);
-        txn->status_ = COMMITTED;
-      }
-      else {
-        EmptyReadWrites(txn);
-        txn_results_.Push(txn);
-      }
-    }
-    // If it's aborted here, it is a permanent abort
-    else {
-      EmptyReadWrites(txn);
-      txn_results_.Push(txn);
-    }
+  // If it's aborted here, it is a permanent abort
+  if (txn->Status() == ABORTED) {
+    EmptyReadWrites(txn);
+    txn_results_.Push(txn);
+    return;
+  }
+
+  GetEndTimestamp(txn);
+  FinishWrites(txn);
+  GetValidationReads(txn);
+
+  if (txn->Validate()) {
+    txn->status_ = COMMITTED;
+  }
+  else {
+    txn->status_ = ABORTED;
+    EmptyReadWrites(txn);
+    txn_results_.Push(txn);
   }
 
   // Postprocessing Phase

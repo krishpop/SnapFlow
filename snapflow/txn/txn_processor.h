@@ -75,6 +75,8 @@ class TxnProcessor {
 
   void GetReads(Txn* txn);
 
+  void GetValidationReads(Txn* txn);
+
   bool CheckWrites(Txn* txn);
 
   void FinishWrites(Txn* txn);
