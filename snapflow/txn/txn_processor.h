@@ -81,6 +81,8 @@ class TxnProcessor {
 
   void PutEndTimestamps(Txn* txn);
 
+  void EmptyReadWrites(Txn* txn);
+
   // snapshot version of scheduler.
   void RunSnapshotScheduler();
 

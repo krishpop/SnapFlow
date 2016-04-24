@@ -85,7 +85,7 @@ void TxnProcessor::GetEndTimestamp(Txn* txn) {
 
   mutex_.Lock();
   txn->end_unique_id_ = next_unique_id_;
-  txn->status_ = COMMITTED;
+  // txn->status_ = COMMITTED;
   next_unique_id_++;
   mutex_.Unlock();
 }
@@ -97,7 +97,7 @@ void TxnProcessor::GetReads(Txn* txn) {
 
     Version * result = NULL;
     if (storage_->Read(*it, &result, txn->unique_id_, CHECKING)) {
-      txn->reads_[*it] = result;
+      txn->reads_[CHECKING][*it] = result;
     }
   }
 
@@ -106,10 +106,25 @@ void TxnProcessor::GetReads(Txn* txn) {
 
     Version * result = NULL;
     if (storage_->Read(*it, &result, txn->unique_id_, SAVINGS)) {
-      txn->reads_[*it] = result;
+      txn->reads_[SAVINGS][*it] = result;
     }
   }
 
+}
+
+void TxnProcessor::GetValidationReads(Txn* txn) {
+  for (set<Key>::iterator it = txn->constraintset_.begin();
+     it != txn->constraintset_.end(); ++it) {
+
+    Version * result = NULL;
+    if (storage_->Read(*it, &result, txn->end_unique_id_, CHECKING)) {
+      txn->reads_[CHECKING][*it] = result;
+    }
+    Version * result = NULL;
+    if (storage_->Read(*it, &result, txn->end_unique_id_, SAVINGS)) {
+      txn->reads_[SAVINGS][*it] = result;
+    }
+  }
 }
 
 bool TxnProcessor::CheckWrites(Txn* txn) {
@@ -119,7 +134,7 @@ bool TxnProcessor::CheckWrites(Txn* txn) {
 
     Version * result = NULL;
     if (storage_->Read(*it, &result, txn->unique_id_, CHECKING)) {
-      txn->reads_[*it] = result;
+      txn->reads_[CHECKING][*it] = result;
 
       if (!storage_->CheckWrite(*it, result, txn, CHECKING)) {
         return false;
@@ -132,7 +147,7 @@ bool TxnProcessor::CheckWrites(Txn* txn) {
 
     Version * result = NULL;
     if (storage_->Read(*it, &result, txn->unique_id_, SAVINGS)) {
-      txn->reads_[*it] = result;
+      txn->reads_[SAVINGS][*it] = result;
 
       if (!storage_->CheckWrite(*it, result, txn, SAVINGS)) {
         return false;
@@ -169,7 +184,7 @@ void TxnProcessor::PutEndTimestamps(Txn* txn) {
      it != txn->writes_[CHECKING].end(); ++it) {
 
     // first is the old version, 2nd is new version
-    storage_->PutEndTimestamp(txn->reads_[CHECKING][it->first], txn->writes_[CHECKING][it->first], txn->end_unique_id_, CHECKING);
+    storage_->PutEndTimestamp(txn->reads_[CHECKING][it->first], txn->writes_[CHECKING][it->first], txn->end_unique_id_);
 
   }
 
@@ -177,10 +192,17 @@ void TxnProcessor::PutEndTimestamps(Txn* txn) {
      it != txn->writes_[SAVINGS].end(); ++it) {
 
     // first is the old version, 2nd is new version
-    storage_->PutEndTimestamp(txn->reads_[SAVINGS][it->first], txn->writes_[SAVINGS][it->first], txn->end_unique_id_, SAVINGS);
+    storage_->PutEndTimestamp(txn->reads_[SAVINGS][it->first], txn->writes_[SAVINGS][it->first], txn->end_unique_id_);
 
   }
 
+}
+
+void TxnProcessor::EmptyReadWrites(Txn* txn) {
+  txn->reads_[CHECKING].empty();
+  txn->writes_[CHECKING].empty();
+  txn->reads_[SAVINGS].empty();
+  txn->writes_[SAVINGS].empty();
 }
 
 void TxnProcessor::SnapshotExecuteTxn(Txn* txn) {
@@ -193,10 +215,7 @@ void TxnProcessor::SnapshotExecuteTxn(Txn* txn) {
   if (!CheckWrites(txn)) {
     Txn* copy = txn->clone();
     txn->status_ = ABORTED;
-    txn->reads_[CHECKING].empty();
-    txn->writes_[CHECKING].empty();
-    txn->reads_[SAVINGS].empty();
-    txn->writes_[SAVINGS].empty();
+    EmptyReadWrites(txn);
     // Copy txn
     txn_requests_.Push(copy);
     return;
@@ -206,15 +225,21 @@ void TxnProcessor::SnapshotExecuteTxn(Txn* txn) {
   if (txn->Status() == ACTIVE) {
     txn->Run();
     if (txn->Status() != ABORTED) {
-      FinishWrites(txn);
       GetEndTimestamp(txn);
+      GetValidationReads(txn);
+
+      if (txn->Validate()) {
+        FinishWrites(txn);
+        txn->status_ = COMMITTED;
+      }
+      else {
+        EmptyReadWrites(txn);
+        txn_results_.Push(txn);
+      }
     }
     // If it's aborted here, it is a permanent abort
     else {
-      txn->reads_[CHECKING].empty();
-      txn->writes_[CHECKING].empty();
-      txn->reads_[SAVINGS].empty();
-      txn->writes_[SAVINGS].empty();
+      EmptyReadWrites(txn);
       txn_results_.Push(txn);
     }
   }
@@ -223,15 +248,6 @@ void TxnProcessor::SnapshotExecuteTxn(Txn* txn) {
   if (txn->Status() == COMMITTED){
     PutEndTimestamps(txn);
     txn_results_.Push(txn);
-  }
-
-    // atomically attempts to set end field of old versions to infinity
-
-    txn->reads_[CHECKING].empty();
-    txn->reads_[SAVINGS].empty();
-    txn->writes_[CHECKING].empty();
-    txn->writes_[SAVINGS].empty();
-    txn_requests_.Push(txn);
   }
 }
 

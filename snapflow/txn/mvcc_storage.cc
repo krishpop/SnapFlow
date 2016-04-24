@@ -198,8 +198,8 @@ bool MVCCStorage::CheckWrite(Key key, Version* read_version, Txn* current_txn, c
 
   // mutex locks critical section of acquiring write priviledge
   front->end_id_.mutex_.Lock();
-  if (front->end_id_.edit_bit == 0) {
-    front->end_id_.edit_bit == 1;
+  if (*(front->end_id_.edit_bit) == 0) {
+    front->end_id_.edit_bit = 1;
     front->end_id_.txn = current_txn;
     front->end_id_.mutex_.Unlock();
     // We leave the timestamp in the front->end_id_.timestamp as INF_INT

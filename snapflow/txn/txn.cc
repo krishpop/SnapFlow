@@ -19,7 +19,7 @@ bool Txn::Read(const Key& key, Value * value, const TableType& table) {
   }
   // 'reads_' has already been populated by TxnProcessor, so it should contain
   // the target value iff the record appears in the database.
-  else if (reads_.count(key)) {
+  else if (reads_[table].count(key)) {
     *value = reads_[table][key]->value_;
     return true;
   } 
@@ -51,20 +51,21 @@ void Txn::Write(const Key& key, const Value& value, Version * to_insert, const T
   //reads_[key] = value;
 }
 
-void Txn::CheckReadWriteSets() {
-  for (set<Key>::iterator it = writeset_.begin();
-       it != writeset_.end(); ++it) {
-    if (readset_.count(*it) > 0) {
-      DIE("Overlapping read/write sets\n.");
-    }
-  }
-}
+// void Txn::CheckReadWriteSets() {
+//   for (set<Key>::iterator it = writeset_.begin();
+//        it != writeset_.end(); ++it) {
+//     if (readset_.count(*it) > 0) {
+//       DIE("Overlapping read/write sets\n.");
+//     }
+//   }
+// }
 
 void Txn::CopyTxnInternals(Txn* txn) const {
   txn->readset_ = vector<set<Key>>(this->readset_);
   txn->writeset_ = vector<set<Key>>(this->writeset_);
   txn->reads_ = vector<map<Key, Version*>>(this->reads_);
   txn->writes_ = vector<map<Key, Version*>>(this->writes_);
+  txn->constraintset_ = set<Key>(this->constraintset_);
   txn->status_ = this->status_;
   txn->unique_id_ = this->unique_id_;
   txn->end_unique_id_ = this->end_unique_id_;
