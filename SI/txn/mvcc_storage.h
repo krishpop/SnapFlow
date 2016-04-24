@@ -4,7 +4,7 @@
 #define _MVCC_STORAGE_H_
 
 #include <limits.h>
-#include <unordered_map>
+#include <tr1/unordered_map>
 #include <deque>
 #include <map>
 
@@ -12,10 +12,9 @@
 #include "txn/txn.h"
 #include "utils/mutex.h"
 
-using std::unordered_map;
+using std::tr1::unordered_map;
 using std::deque;
 using std::map;
-using std::vector;
 
 
 // MVCC storage
@@ -24,20 +23,17 @@ class MVCCStorage {
   // If there exists a record for the specified key, sets '*result' equal to
   // the value associated with the key and returns true, else returns false;
   // The third parameter is the txn_unique_id(txn timestamp), which is used for MVCC.
-  bool Read(Key key, Version** result, uint64 txn_unique_id = 0, TableType tbl_type = CHECKING);
+  bool Read(Key key, Version** result, uint64 txn_unique_id = 0);
 
   // Check whether apply or abort the write
-  bool CheckWrite(Key key, Version* read_version, Txn* current_txn, TableType tbl_type = CHECKING);
+  bool CheckWrite(Key key, Version* read_version, Txn* current_txn);
 
   // Inserts a new version with key and value
   // The third parameter is the txn_unique_id(txn timestamp), which is used for MVCC.
-  void FinishWrite(Key key, Version* new_version, TableType tbl_type = CHECKING);
+  void FinishWrite(Key key, Version* new_version);
 
-  // Init storage of multiple tables
+  // Init storage
   void InitStorage();
-
-  // Init table
-  unordered_map<Key, deque<Version*>*> InitTable();
 
   // Lock the version_list of key
   void Lock(Key key);
@@ -45,13 +41,10 @@ class MVCCStorage {
   // Unlock the version_list of key
   void Unlock(Key key);
 
-  // Get the start timestamp for a version and transaction id
   uint64 GetBeginTimestamp(Version * v, uint64 my_id, Timestamp&);
 
-  // Get the end timestamp for a version and transaction id
   uint64 GetEndTimestamp(Version * v, uint64 my_id, Timestamp&);
 
-  // Put end timestamps into versions in storage
   void PutEndTimestamp(Version *, Version *, uint64);
 
   ~MVCCStorage();
@@ -64,9 +57,13 @@ class MVCCStorage {
 
   friend class TxnProcessor;
 
-  // MVCC storage: vector of tables (maps with pointer to linked list of versions)
-  // TO DO: pointers to maps or just the maps?
-  vector<unordered_map<Key, deque<Version*>*>> mvcc_data_;
+  // Storage for MVCC, each key has a linklist of versions
+  unordered_map<Key, deque<Version*>*> mvcc_data_;
+
+  // Mutexs for each key
+  //unordered_map<Key, Atomic<int>> write_access_table_;
+
+
 };
 
 #endif  // _MVCC_STORAGE_H_

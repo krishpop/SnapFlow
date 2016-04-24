@@ -1,0 +1,25 @@
+Benchmarks for Snapshot Isolation
+=================================
+
+Average Transaction Duration
+		0.1ms		1ms		10ms
+'Low contention' Read only (5 records)
+ Snapshot   	43336.7		5619.59		609.133	
+'Low contention' Read only (20 records) 
+ Snapshot   	31651.9		5415.69		572.053	
+'High contention' Read only (5 records)
+ Snapshot   	43326.4		5639.42		618.228	
+'High contention' Read only (20 records)
+ Snapshot   	33667.3		5286.51		599.105	
+Low contention read-write (5 records)
+ Snapshot   	34889.2		4936.11		561.722	
+Low contention read-write (10 records)
+ Snapshot   	26638.8		4036.34		540.555	
+High contention read-write (1 records)
+ Snapshot   	125953		25169.6		2793.07	
+High contention read-write (5 records)
+ Snapshot   	101466		17782.2		2662.7	
+High contention read-write (10 records)
+ Snapshot   	155200		67464.5		8745.01	
+High contention mixed read only/read-write 
+ Snapshot   	33709.1		5780.23		765.09	
