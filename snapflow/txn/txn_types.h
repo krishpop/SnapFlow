@@ -117,11 +117,34 @@ class RMW : public Txn {
     }
   }
 
+  void InitPrivateSets() {
+    set<Key> temp1;
+    set<Key> temp2;
+    readset_.push_back(temp1);
+    readset_.push_back(temp2);
+    set<Key> temp3;
+    set<Key> temp4;
+    writeset_.push_back(temp3);
+    writeset_.push_back(temp4);
+
+    map<Key, Version*> t1;
+    map<Key, Version*> t2;
+    reads_.push_back(t1);
+    reads_.push_back(t2);
+    map<Key, Version*> t3;
+    map<Key, Version*> t4;
+    writes_.push_back(t3);
+    writes_.push_back(t4);
+
+  }
+
   // Constructor with randomized read/write sets
   RMW(int dbsize, int readsetsize, int writesetsize, double time = 0)
       : time_(time) {
     // Make sure we can find enough unique keys.
     DCHECK(dbsize >= readsetsize + writesetsize);
+    // Initialize empty sets
+    InitPrivateSets();
 
     // Find readsetsize unique read keys.
     TableType table = CHECKING;

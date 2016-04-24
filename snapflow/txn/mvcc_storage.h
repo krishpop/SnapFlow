@@ -66,7 +66,7 @@ class MVCCStorage {
 
   // MVCC storage: vector of tables (maps with pointer to linked list of versions)
   // TO DO: pointers to maps or just the maps?
-  vector<unordered_map<Key, deque<Version*>*>> mvcc_data_(2);
+  vector<unordered_map<Key, deque<Version*>*>> mvcc_data_;
 };
 
 #endif  // _MVCC_STORAGE_H_
