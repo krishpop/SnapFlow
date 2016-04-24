@@ -120,17 +120,17 @@ class Txn {
   // Set of all keys that may need to be read in order to execute the
   // transaction.
   // The first entry is readset_chk_. The second is readset_sav_
-  vector<set<Key>> readset_;
+  vector<set<Key>> readset_(2);
 
   // Set of all keys that may be updated when executing the transaction.
-  vector<set<Key>> writeset_;
+  vector<set<Key>> writeset_(2);
 
   // Results of reads performed by the transaction.
-  vector<map<Key, Version*>> reads_;
+  vector<map<Key, Version*>> reads_(2);
 
 
   // Key, Value pairs WRITTEN by the transaction.
-  vector<map<Key, Version*>> writes_;
+  vector<map<Key, Version*>> writes_(2);
 
   set<Key> constraintset_;
 
