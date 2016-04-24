@@ -85,7 +85,7 @@ void TxnProcessor::GetEndTimestamp(Txn* txn) {
 
   mutex_.Lock();
   txn->end_unique_id_ = next_unique_id_;
-  txn->status_ = COMMITTED;
+  // txn->status_ = COMMITTED;
   next_unique_id_++;
   mutex_.Unlock();
 }
@@ -110,6 +110,21 @@ void TxnProcessor::GetReads(Txn* txn) {
     }
   }
 
+}
+
+void TxnProcessor::GetValidationReads(Txn* txn) {
+  for (set<Key>::iterator it = txn->constraintset_.begin();
+     it != txn->constraintset_.end(); ++it) {
+
+    Version * result = NULL;
+    if (storage_->Read(*it, &result, txn->end_unique_id_, CHECKING, true)) {
+      txn->reads_[CHECKING][*it] = result;
+    }
+    Version * result = NULL;
+    if (storage_->Read(*it, &result, txn->end_unique_id_, SAVINGS, true)) {
+      txn->reads_[SAVINGS][*it] = result;
+    }
+  }
 }
 
 bool TxnProcessor::CheckWrites(Txn* txn) {
@@ -183,6 +198,13 @@ void TxnProcessor::PutEndTimestamps(Txn* txn) {
 
 }
 
+void TxnProcessor::EmptyReadWrites(Txn* txn) {
+  txn->reads_[CHECKING].empty();
+  txn->writes_[CHECKING].empty();
+  txn->reads_[SAVINGS].empty();
+  txn->writes_[SAVINGS].empty();
+}
+
 void TxnProcessor::SnapshotExecuteTxn(Txn* txn) {
   // Begin stage
   GetBeginTimestamp(txn);
@@ -193,30 +215,35 @@ void TxnProcessor::SnapshotExecuteTxn(Txn* txn) {
   if (!CheckWrites(txn)) {
     Txn* copy = txn->clone();
     txn->status_ = ABORTED;
-    txn->reads_[CHECKING].empty();
-    txn->writes_[CHECKING].empty();
-    txn->reads_[SAVINGS].empty();
-    txn->writes_[SAVINGS].empty();
+    EmptyReadWrites(txn);
     // Copy txn
     txn_requests_.Push(copy);
     return;
   }
 
 
-  if (txn->Status() == ACTIVE) {
-    txn->Run();
-    if (txn->Status() != ABORTED) {
-      FinishWrites(txn);
-      GetEndTimestamp(txn);
-    }
-    // If it's aborted here, it is a permanent abort
-    else {
-      txn->reads_[CHECKING].empty();
-      txn->writes_[CHECKING].empty();
-      txn->reads_[SAVINGS].empty();
-      txn->writes_[SAVINGS].empty();
-      txn_results_.Push(txn);
-    }
+  txn->Run();
+  txn->writes_[CHECKING].empty();
+  txn->writes_[SAVINGS].empty();
+
+  // If it's aborted here, it is a permanent abort
+  if (txn->Status() == ABORTED) {
+    EmptyReadWrites(txn);
+    txn_results_.Push(txn);
+    return;
+  }
+
+  FinishWrites(txn);
+  GetEndTimestamp(txn);
+  GetValidationReads(txn);
+
+  if (txn->Validate()) {
+    txn->status_ = COMMITTED;
+  }
+  else {
+    txn->status_ = ABORTED;
+    EmptyReadWrites(txn);
+    txn_results_.Push(txn);
   }
 
   // Postprocessing Phase

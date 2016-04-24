@@ -48,13 +48,13 @@ class TxnProcessor {
 
   // Main loop implementing all concurrency control/thread scheduling.
   void RunScheduler();
-  
+
   static void* StartScheduler(void * arg);
 
   // An instance transaction table of txns that have WRITTEN/TRIED TO WRITE
   // to the database
 
-  
+
  private:
 
   // Performs all reads required to execute the transaction, then executes the
@@ -75,22 +75,26 @@ class TxnProcessor {
 
   void GetReads(Txn* txn);
 
+  void GetValidationReads(Txn* txn);
+
   bool CheckWrites(Txn* txn);
 
   void FinishWrites(Txn* txn);
 
   void PutEndTimestamps(Txn* txn);
 
+  void EmptyReadWrites(Txn* txn);
+
   // snapshot version of scheduler.
   void RunSnapshotScheduler();
 
   // run our new version
   void RunNewScheduler();
-  
+
   void GarbageCollection();
 
   void SnapshotExecuteTxn(Txn* txn);
-  
+
   // Concurrency control mechanism the TxnProcessor is currently using.
   CCMode mode_;
 
@@ -115,10 +119,6 @@ class TxnProcessor {
   // Queue of transaction results (already committed or aborted) to be returned
   // to client.
   AtomicQueue<Txn*> txn_results_;
-
-
-
 };
 
 #endif  // _TXN_PROCESSOR_H_
-

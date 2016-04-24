@@ -103,6 +103,7 @@ class RMW : public Txn {
         key = rand() % dbsize;
       } while (readset_[table].count(key));
       readset_[table].insert(key);
+  
     }
   }
 
@@ -183,7 +184,7 @@ class RMW : public Txn {
         x = x*x;
       }
     }
-    
+
     // For SI we do not want to set the status at txn execution time.
     //COMMIT;
   }
@@ -191,7 +192,6 @@ class RMW : public Txn {
  private:
   double time_;
 };
-
 
 // WriteCheck txns to deal with write-skew (used by a Checking/Savings system)
 class WriteCheck : public Txn {
@@ -259,7 +259,7 @@ class WriteCheck : public Txn {
     // Here we read from both Checking and Saving tables and store those results
     // in result_chk and result_sav respectively.
     GetChkAndSav(key, result_chk, result_sav);
-    
+
     // As we construct the val_path, we check with the given path_value.
     if (result_sav + result_chk >= constraint_) {
       if (!path_value) {
@@ -315,7 +315,7 @@ class WriteCheck : public Txn {
   // TODO: update this Run function to create some kind of struct that checks
   // the path taken through the constraint checks.
   virtual void Run() {
-    
+
     // Execute everything in our read/write sets for Constraintset
     ReadWrite();
 
@@ -328,7 +328,7 @@ class WriteCheck : public Txn {
         x = x*x;
       }
     }
-    
+
     // For SI we do not want to set the status at txn execution time.
     //COMMIT;
   }
@@ -495,4 +495,3 @@ class WithdrawSavings : public Txn {
 };
 
 #endif  // _TXN_TYPES_H_
-

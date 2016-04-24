@@ -1,4 +1,7 @@
-			    Average Transaction Duration
+Benchmarks for Snapshot Isolation
+=================================
+
+Average Transaction Duration
 		0.1ms		1ms		10ms
 'Low contention' Read only (5 records)
  Snapshot   	43336.7		5619.59		609.133	

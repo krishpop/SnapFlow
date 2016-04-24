@@ -1,8 +1,0 @@
-			    Average Transaction Duration
-		0.1ms		1ms		10ms
-'Low contention' Read only (5 records)
- Snapshot   	42455	
-	3910.62	
-	478.817	
-'Low contention' Read only (20 records) 
- Snapshot   
