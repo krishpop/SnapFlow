@@ -65,7 +65,7 @@ Txn* TxnProcessor::GetTxnResult() {
 void TxnProcessor::RunScheduler() {
   switch (mode_) {
     case SI:                 RunSnapshotScheduler();
-    case NEW:                RunNewScheduler();
+    case CSI:                RunNewScheduler();
   }
 }
 

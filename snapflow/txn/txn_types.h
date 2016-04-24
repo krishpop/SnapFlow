@@ -96,6 +96,26 @@ class RMW : public Txn {
     writeset_ = writeset;
   }
 
+  void InitReadSet(int size, const TableType& table, int dbsize) {
+    for (int i = 0; i < size; i++) {
+      Key key;
+      do {
+        key = rand() % dbsize;
+      } while (readset_[table].count(key));
+      readset_[table].insert(key);
+    }
+  }
+
+  void InitWriteSet(int size, const TableType& table, int dbsize) {
+    for (int i = 0; i < size; i++) {
+      Key key;
+      do {
+        key = rand() % dbsize;
+      } while (readset_[table].count(key) || writeset_[table].count(key));
+      writeset_[table].insert(key);
+    }
+  }
+
   // Constructor with randomized read/write sets
   RMW(int dbsize, int readsetsize, int writesetsize, double time = 0)
       : time_(time) {
@@ -103,22 +123,24 @@ class RMW : public Txn {
     DCHECK(dbsize >= readsetsize + writesetsize);
 
     // Find readsetsize unique read keys.
-    for (int i = 0; i < readsetsize; i++) {
-      Key key;
-      do {
-        key = rand() % dbsize;
-      } while (readset_.count(key));
-      readset_.insert(key);
-    }
+    TableType table = CHECKING;
+    // Fill CHECKING table with split # of random keys
+    int split = rand() % readsetsize;
+    InitReadSet(split, table, dbsize);
 
+
+    // We fill the SAVINGS table with readsetsize - split random keys
+    table = SAVINGS;
+    InitReadSet(readsetsize - split, table, dbsize);
+
+    split = rand() % writesetsize;
+    table = CHECKING;
     // Find writesetsize unique write keys.
-    for (int i = 0; i < writesetsize; i++) {
-      Key key;
-      do {
-        key = rand() % dbsize;
-      } while (readset_.count(key) || writeset_.count(key));
-      writeset_.insert(key);
-    }
+    InitWriteSet(split, table, dbsize);
+
+    table = SAVINGS;
+    InitWriteSet(writesetsize - split, table, dbsize);
+
   }
 
   RMW* clone() const {             // Virtual constructor (copying)
@@ -129,6 +151,7 @@ class RMW : public Txn {
 
   void ReadWriteTable(const TableType& table) {
     // Read everything in readset.
+    Value result;
     for (set<Key>::iterator it = readset_[table].begin(); it != readset_[table].end(); ++it) {
       Read(*it, &result, table);
     }
@@ -144,7 +167,6 @@ class RMW : public Txn {
   }
 
   virtual void Run() {
-    Value result;
     TableType table = CHECKING;
     // Execute everything in our read/write sets for CHECKING
     ReadWriteTable(table);
@@ -186,13 +208,13 @@ class WriteCheck : public Txn {
 
   // Constructor with randomized read sets
   // Required: readsetsize == writesetsize
-  WriteCheck(int dbsize, int readsetsize, int writesetsize, double time = 0)
+  WriteCheck(int dbsize, int setsize, double time = 0)
       : time_(time) {
     // Make sure we can find enough unique keys.
-    DCHECK(dbsize >= readsetsize + writesetsize);
+    DCHECK(dbsize >= 2*setsize);
 
-    // Find readsetsize unique read keys.
-    for (int i = 0; i < readsetsize; i++) {
+    // Find setsize unique read keys.
+    for (int i = 0; i < setsize; i++) {
       Key key;
       do {
         key = rand() % dbsize;
@@ -218,8 +240,8 @@ class WriteCheck : public Txn {
   // struct and compares it with the original one. Returns true if they're
   // the same, returns false otherwise.
   virtual bool Validate() {
-    for (set<Key>::iterator it = constraintset_.begin(), vector<bool>::iterator it_v = path_.begin();
-     it != constraintset_.end(); ++it, ++it_v) {
+    vector<bool>::iterator it_v = path_.begin();
+    for (set<Key>::iterator it = constraintset_.begin(); it != constraintset_.end(); ++it, ++it_v) {
       if (!ValidatePath(*it, *it_v)) { // This must be done before committing, right?
         return false;
       }
@@ -287,6 +309,157 @@ class WriteCheck : public Txn {
       deduct = ConstructPath(*it, result_chk, result_sav);
       Version * to_insert = new Version;
       Write(*it, result_chk - deduct, to_insert, CHECKING);
+    }
+  }
+
+  // TODO: update this Run function to create some kind of struct that checks
+  // the path taken through the constraint checks.
+  virtual void Run() {
+    
+    // Execute everything in our read/write sets for Constraintset
+    ReadWrite();
+
+    // Run while loop to simulate the txn logic(duration is time_).
+    double begin = GetTime();
+    while (GetTime() - begin < time_) {
+      for (int i = 0;i < 1000; i++) {
+        int x = 100;
+        x = x + 2;
+        x = x*x;
+      }
+    }
+    
+    // For SI we do not want to set the status at txn execution time.
+    //COMMIT;
+  }
+
+ private:
+  double time_;
+  // This is the path of the binary (for now) tree that we must compare
+  // against when validating for write-skew.
+  vector<bool> path_;
+  // For WriteCheck txns, constraint_ is the upper bound on how much
+  // money the customer must have for the txn to not penalize him/her.
+  Value constraint_;
+};
+
+// WithdrawSavings txns to deal with write-skew (used by a Checking/Savings system)
+// This txn type contains a constraint set that writes the Savings table by checking
+// both Savings and Checking.
+class WriteCheck : public Txn {
+ public:
+  explicit WithdrawSavings(double time = 0) : time_(time) {}
+  WithdrawSavings(const vector<set<Key>>& writeset, double time = 0) : time_(time) {
+    writeset_ = writeset;
+  }
+  WithdrawSavings(const vector<set<Key>>& readset, const vector<set<Key>>& writeset, double time = 0)
+      : time_(time) {
+    readset_ = readset;
+    writeset_ = writeset;
+  }
+
+  // Constructor with randomized read sets
+  // Required: readsetsize == writesetsize
+  WithdrawSavings(int dbsize, int setsize, double time = 0)
+      : time_(time) {
+    // Make sure we can find enough unique keys.
+    DCHECK(dbsize >= 2*setsize);
+
+    // Find setsize unique read keys.
+    for (int i = 0; i < setsize; i++) {
+      Key key;
+      do {
+        key = rand() % dbsize;
+      } while (readset_[SAVINGS].count(key));
+      // Even though it is only of the type CHECKING, we note that
+      // a WC txn will use the readset_[CHECKING] to look BOTH in
+      // checking and savings.
+      readset_[SAVINGS].insert(key);
+      writeset_[CHECKING].insert(key);
+      constraintset_.insert(key);
+    }
+
+  }
+
+  WriteCheck* clone() const {             // Virtual constructor (copying)
+    WriteCheck* clone = new WriteCheck(time_);
+    this->CopyTxnInternals(clone);
+    return clone;
+  }
+
+  // Just readset?
+  // This functions checks our readset again and creates a constraint checking
+  // struct and compares it with the original one. Returns true if they're
+  // the same, returns false otherwise.
+  virtual bool Validate() {
+    vector<bool>::iterator it_v = path_.begin();
+    for (set<Key>::iterator it = constraintset_.begin(); it != constraintset_.end(); ++it, ++it_v) {
+      if (!ValidatePath(*it, *it_v)) { // This must be done before committing, right?
+        return false;
+      }
+    }
+    return true;
+  }
+
+  // Constructs a path and compares with path_ while doing so.
+  // Returns true if the constructed path matches with path_'s, otherwise
+  // returns false.
+  bool ValidatePath(const Key& key, const bool& path_value) {
+    Value result_chk = 0;
+    Value result_sav = 0;
+
+    // Here we read from both Checking and Saving tables and store those results
+    // in result_chk and result_sav respectively.
+    GetChkAndSav(key, result_chk, result_sav);
+    
+    // As we construct the val_path, we check with the given path_value.
+    if (result_sav + result_chk >= constraint_) {
+      if (!path_value) {
+        return false;
+      }
+    }
+    else {
+      if (path_value) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  // this function reads in the appropriate OTHER table from the one we already read in
+  // Requires: val is already a value read in from table.
+  void GetChkAndSav(const Key& key, Value& result_chk, Value& result_sav) {
+    Read(key, &result_chk, CHECKING);
+    Read(key, &result_sav, SAVINGS);
+  }
+
+  // Note that this function is dependent on the constraint that we
+  // are checking. To add more constraints, this and ValidatePath would
+  // have to change.
+  Value ConstructPath(const Key& key, const Value& chk, const Value& sav) {
+    Value deduction;
+    if (sav + chk >= constraint_) {
+        path_.push_back(true);
+        deduction = constraint_;
+    }
+    else {
+        path_.push_back(false);
+        deduction = constraint_ + 1;
+    }
+    return deduction;
+  }
+
+  void ReadWrite() {
+    // Read everything in readset.
+    Value result_chk = 0;
+    Value result_sav = 0;
+    Value deduct;
+    for (set<Key>::iterator it = constraintset_.begin(); it != constraintset_.end(); ++it) {
+      GetChkAndSav(*it, result_chk, result_sav);
+      // We already read one result in, we need only read in from the other table
+      deduct = ConstructPath(*it, result_chk, result_sav);
+      Version * to_insert = new Version;
+      Write(*it, result_chk - deduct, to_insert, SAVINGS);
     }
   }
 

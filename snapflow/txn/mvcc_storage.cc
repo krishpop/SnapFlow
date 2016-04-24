@@ -71,7 +71,7 @@ MVCCStorage::~MVCCStorage() {
  *
  */
 
-uint64 MVCCStorage::GetBeginTimestamp(Version * v, uint64 my_id, Timestamp & ts) {
+uint64 MVCCStorage::GetBeginTimestamp(Version * v, uint64 my_id, Timestamp & ts, const bool& val) {
   // What if ts.txn has committed and replaced itself?
   // This requires that the txn keeps its pointer in the Txn field of the TS
   ts.mutex_.Lock();
@@ -81,9 +81,17 @@ uint64 MVCCStorage::GetBeginTimestamp(Version * v, uint64 my_id, Timestamp & ts)
   uint64 id = txn_p->GetStartID();
 
   if (status == ACTIVE) {
-    if (id == my_id && v->end_id_.timestamp == INF_INT) {
+    if (id == my_id && v->end_id_.timestamp == INF_INT && !val) {
       // v is visible
       return my_id;
+    }
+    // If we are validating, we only read versions that are NOT ours.
+    // This means that if my_id (during validation my_id == end_unique_id) is
+    // equal to the txn's end_unique_id, then we ignore it. This is to prevent
+    // us reading our own version during validation.
+    else if (val && v->end_id_.timestamp == INF_INT && my_id != txn_p->GetEndID()) {
+      // v is visible
+      return txn_p->GetEndID();
     }
     else {
       // v is not visible
@@ -101,18 +109,17 @@ uint64 MVCCStorage::GetBeginTimestamp(Version * v, uint64 my_id, Timestamp & ts)
 
 }
 
-uint64 MVCCStorage::GetEndTimestamp(Version * v, uint64 my_id, Timestamp & ts) {
+uint64 MVCCStorage::GetEndTimestamp(Version * v, uint64 my_id, Timestamp & ts, const bool& val) {
   // What if ts.txn has committed and replaced itself?
   // This requires that the txn keeps its pointer in the Txn field of the TS
   ts.mutex_.Lock();
   Txn * txn_p = (Txn*) ts.txn;
   ts.mutex_.Unlock();
-  // We get a segfault here since txn_p is NULL. This can happen if the edit_bit_ has been
-  // set by another thread BUT we reach the lock first.
+
   TxnStatus status = txn_p->Status();
 
   if (status == ACTIVE) {
-      return INF_INT;
+      return INF_INT;      
   }
   else if (status == COMMITTED) {
     return txn_p->GetEndID();
@@ -125,7 +132,7 @@ uint64 MVCCStorage::GetEndTimestamp(Version * v, uint64 my_id, Timestamp & ts) {
 }
 
 
-bool MVCCStorage::Read(Key key, Version** result, uint64 txn_unique_id, const TableType tbl_type) {
+bool MVCCStorage::Read(Key key, Version** result, uint64 txn_unique_id, const TableType tbl_type, const bool& val) {
   if (mvcc_data_[tbl_type].count(key)) {
     deque<Version*> * data_versions_p =  mvcc_data_[tbl_type][key];
     uint64 begin_ts, end_ts;
@@ -136,20 +143,20 @@ bool MVCCStorage::Read(Key key, Version** result, uint64 txn_unique_id, const Ta
 
       // Case 2:
       if (*((*it)->begin_id_.edit_bit) == 1) {
-        begin_ts = GetBeginTimestamp(*it, txn_unique_id, (*it)->begin_id_);
+        begin_ts = GetBeginTimestamp(*it, txn_unique_id, (*it)->begin_id_, val);
         if (!(*((*it)->end_id_.edit_bit) == 1)) {
           end_ts = (*it)->end_id_.timestamp;
         }
         // Case 3:
         else {
-          end_ts = GetEndTimestamp(*it, txn_unique_id, (*it)->end_id_);
+          end_ts = GetEndTimestamp(*it, txn_unique_id, (*it)->end_id_, val);
         }
       }
       else {
         begin_ts = (*it)->begin_id_.timestamp;
         // Case 3:
         if (*((*it)->end_id_.edit_bit) == 1) {
-          end_ts = GetEndTimestamp(*it, txn_unique_id, (*it)->end_id_);
+          end_ts = GetEndTimestamp(*it, txn_unique_id, (*it)->end_id_, val);
         }
         // Case 1:
         else {
