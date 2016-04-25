@@ -135,6 +135,10 @@ class RMW : public Txn {
     map<Key, Version*> t4;
     writes_.push_back(t3);
     writes_.push_back(t4);
+    map<Key, Version*> t5;
+    map<Key, Version*> t6;
+    vals_.push_back(t5);
+    vals_.push_back(t6);
 
   }
 
@@ -253,6 +257,10 @@ class WriteCheck : public Txn {
     map<Key, Version*> t4;
     writes_.push_back(t3);
     writes_.push_back(t4);
+    map<Key, Version*> t5;
+    map<Key, Version*> t6;
+    vals_.push_back(t5);
+    vals_.push_back(t6);
 
   }
 
@@ -308,8 +316,12 @@ class WriteCheck : public Txn {
 
     // Here we read from both Checking and Saving tables and store those results
     // in result_chk and result_sav respectively.
-    GetChkAndSav(key, result_chk, result_sav);
-
+    bool val = true;
+    GetChkAndSav(key, result_chk, result_sav, val);
+    // std::cout << "path_value: " << path_value << std::endl;
+    // std::cout << "result_chk: " << result_chk << std::endl;
+    // std::cout << "result_sav: " << result_sav << std::endl;
+    // std::cout << "constraint_: " << constraint_ << std::endl;
     // As we construct the val_path, we check with the given path_value.
     if (result_sav + result_chk >= constraint_) {
       if (!path_value) {
@@ -326,9 +338,9 @@ class WriteCheck : public Txn {
 
   // this function reads in the appropriate OTHER table from the one we already read in
   // Requires: val is already a value read in from table.
-  void GetChkAndSav(const Key& key, Value& result_chk, Value& result_sav) {
-    Read(key, &result_chk, CHECKING);
-    Read(key, &result_sav, SAVINGS);
+  void GetChkAndSav(const Key& key, Value& result_chk, Value& result_sav, const bool& val) {
+    Read(key, &result_chk, CHECKING, val);
+    Read(key, &result_sav, SAVINGS, val);
   }
 
   // Note that this function is dependent on the constraint that we
@@ -352,9 +364,10 @@ class WriteCheck : public Txn {
     // Read everything in readset.
     Value result_chk = 0;
     Value result_sav = 0;
-    Value deduct;
+    Value deduct = 0;
+    bool val = false;
     for (set<Key>::iterator it = constraintset_.begin(); it != constraintset_.end(); ++it) {
-      GetChkAndSav(*it, result_chk, result_sav);
+      GetChkAndSav(*it, result_chk, result_sav, val);
       // We already read one result in, we need only read in from the other table
       deduct = ConstructPath(*it, result_chk, result_sav);
       Version * to_insert = new Version;
@@ -390,7 +403,7 @@ class WriteCheck : public Txn {
   vector<bool> path_;
   // For WriteCheck txns, constraint_ is the upper bound on how much
   // money the customer must have for the txn to not penalize him/her.
-  Value constraint_;
+  Value constraint_ = 0;
 };
 
 // WithdrawSavings txns to deal with write-skew (used by a Checking/Savings system)
@@ -449,6 +462,10 @@ class WithdrawSavings : public Txn {
     map<Key, Version*> t4;
     writes_.push_back(t3);
     writes_.push_back(t4);
+    map<Key, Version*> t5;
+    map<Key, Version*> t6;
+    vals_.push_back(t5);
+    vals_.push_back(t6);
 
   }
 
@@ -481,7 +498,8 @@ class WithdrawSavings : public Txn {
 
     // Here we read from both Checking and Saving tables and store those results
     // in result_chk and result_sav respectively.
-    GetChkAndSav(key, result_chk, result_sav);
+    bool val = true;
+    GetChkAndSav(key, result_chk, result_sav, val);
 
     // As we construct the val_path, we check with the given path_value.
     if (result_sav + result_chk >= constraint_) {
@@ -499,9 +517,9 @@ class WithdrawSavings : public Txn {
 
   // this function reads in the appropriate OTHER table from the one we already read in
   // Requires: val is already a value read in from table.
-  void GetChkAndSav(const Key& key, Value& result_chk, Value& result_sav) {
-    Read(key, &result_chk, CHECKING);
-    Read(key, &result_sav, SAVINGS);
+  void GetChkAndSav(const Key& key, Value& result_chk, Value& result_sav, const bool& val) {
+    Read(key, &result_chk, CHECKING, val);
+    Read(key, &result_sav, SAVINGS, val);
   }
 
   // Note that this function is dependent on the constraint that we
@@ -524,9 +542,10 @@ class WithdrawSavings : public Txn {
     // Read everything in readset.
     Value result_chk = 0;
     Value result_sav = 0;
-    Value deduct;
+    Value deduct = 0;
+    bool val = false;
     for (set<Key>::iterator it = constraintset_.begin(); it != constraintset_.end(); ++it) {
-      GetChkAndSav(*it, result_chk, result_sav);
+      GetChkAndSav(*it, result_chk, result_sav, val);
       // We already read one result in, we need only read in from the other table
       deduct = ConstructPath(*it, result_chk, result_sav);
       Version * to_insert = new Version;
@@ -562,7 +581,7 @@ class WithdrawSavings : public Txn {
   vector<bool> path_;
   // For WriteCheck txns, constraint_ is the upper bound on how much
   // money the customer must have for the txn to not penalize him/her.
-  Value constraint_;
+  Value constraint_ = 0;
 };
 
 #endif  // _TXN_TYPES_H_

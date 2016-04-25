@@ -120,12 +120,16 @@ void TxnProcessor::GetValidationReads(Txn* txn) {
 
     Version * result = NULL;
     if (storage_->Read(*it, &result, txn->end_unique_id_, CHECKING, true)) {
-      txn->reads_[CHECKING][*it] = result;
+      if (!result) {
+        std::cout << "FUCK THIS" << std::endl;
+      }
+      txn->vals_[CHECKING][*it] = result;
     }
     result = NULL;
     if (storage_->Read(*it, &result, txn->end_unique_id_, SAVINGS, true)) {
-      txn->reads_[SAVINGS][*it] = result;
+      txn->vals_[SAVINGS][*it] = result;
     }
+
   }
 }
 
@@ -185,6 +189,9 @@ void TxnProcessor::PutEndTimestamps(Txn* txn) {
   for (map<Key, Version*>::iterator it = txn->writes_[CHECKING].begin();
      it != txn->writes_[CHECKING].end(); ++it) {
 
+    if (txn->reads_[CHECKING][it->first] == NULL) {
+      std::cout << "HERE" << std::endl;
+    }
     // first is the old version, 2nd is new version
     storage_->PutEndTimestamp(txn->reads_[CHECKING][it->first], txn->writes_[CHECKING][it->first], txn->end_unique_id_);
 
@@ -201,10 +208,13 @@ void TxnProcessor::PutEndTimestamps(Txn* txn) {
 }
 
 void TxnProcessor::EmptyReadWrites(Txn* txn) {
-  txn->reads_[CHECKING].empty();
-  txn->writes_[CHECKING].empty();
-  txn->reads_[SAVINGS].empty();
-  txn->writes_[SAVINGS].empty();
+  txn->reads_[CHECKING].clear();
+  txn->writes_[CHECKING].clear();
+  txn->vals_[CHECKING].clear();
+  txn->reads_[SAVINGS].clear();
+  txn->writes_[SAVINGS].clear();
+  txn->vals_[SAVINGS].clear();
+
 }
 
 void TxnProcessor::CSIExecuteTxn(Txn* txn) {
@@ -215,9 +225,11 @@ void TxnProcessor::CSIExecuteTxn(Txn* txn) {
   GetReads(txn);
 
   if (!CheckWrites(txn)) {
-    Txn* copy = txn->clone();
-    txn->status_ = ABORTED;
     EmptyReadWrites(txn);
+    Txn* copy = txn->clone();
+    copy->status_ = INCOMPLETE;
+    txn->status_ = ABORTED;
+    
     // Copy txn
     txn_requests_.Push(copy);
     return;
@@ -225,8 +237,8 @@ void TxnProcessor::CSIExecuteTxn(Txn* txn) {
 
 
   txn->Run();
-  txn->writes_[CHECKING].empty();
-  txn->writes_[SAVINGS].empty();
+  // txn->writes_[CHECKING].empty();
+  // txn->writes_[SAVINGS].empty();
 
   // If it's aborted here, it is a permanent abort
   if (txn->Status() == ABORTED) {
@@ -237,15 +249,17 @@ void TxnProcessor::CSIExecuteTxn(Txn* txn) {
 
   FinishWrites(txn);
   GetEndTimestamp(txn);
-  GetValidationReads(txn);
+  GetValidationReads(txn); // Should not do this now. This overwrites reads_
 
   if (txn->Validate()) {
     txn->status_ = COMMITTED;
   }
   else {
-    Txn* copy = txn->clone();
-    txn->status_ = ABORTED;
     EmptyReadWrites(txn);
+    Txn* copy = txn->clone();
+    copy->status_ = INCOMPLETE;
+    txn->status_ = ABORTED;
+    
     // Copy txn
     txn_requests_.Push(copy);
     return;
@@ -260,15 +274,15 @@ void TxnProcessor::CSIExecuteTxn(Txn* txn) {
 
 void TxnProcessor::SnapshotExecuteTxn(Txn* txn) {
 
-
   GetBeginTimestamp(txn);
 
   GetReads(txn);
 
   if (!CheckWrites(txn)) {
-    Txn* copy = txn->clone();
-    txn->status_ = ABORTED;
     EmptyReadWrites(txn);
+    Txn* copy = txn->clone();
+    copy->status_ = INCOMPLETE;
+    txn->status_ = ABORTED;
     // Copy txn
     txn_requests_.Push(copy);
     return;

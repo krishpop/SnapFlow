@@ -133,7 +133,7 @@ void Benchmark(const vector<LoadGen*>& lg) {
   deque<Txn*> doneTxns;
 
   // For each MODE...
-  for (CCMode mode = CSI;
+  for (CCMode mode = SI;
       mode <= CSI;
       mode = static_cast<CCMode>(mode+1)) {
     // Print out mode name.

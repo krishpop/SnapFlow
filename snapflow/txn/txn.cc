@@ -2,7 +2,7 @@
 
 #include "txn/txn.h"
 uint64 INF_INT = std::numeric_limits<uint64>::max();
-bool Txn::Read(const Key& key, Value * value, const TableType& table) {
+bool Txn::Read(const Key& key, Value * value, const TableType& table, const bool& val) {
   // Check that key is in readset/writeset.
   if (readset_[table].count(key) == 0 && writeset_[table].count(key) == 0)
     DIE("Invalid read (key not in readset or writeset).");
@@ -11,9 +11,13 @@ bool Txn::Read(const Key& key, Value * value, const TableType& table) {
   if (status_ != INCOMPLETE && status_ != ACTIVE)
     return false;
 
+  if (val) {
+    *value = vals_[table][key]->value_;
+    return true;
+  }
   // If we have previously written to key, then we read the newest local
   // version.
-  if (writes_[table].count(key)) {
+  if (!val && writes_[table].count(key)) {
     *value = writes_[table][key]->value_;
     return true;
   }
@@ -65,6 +69,7 @@ void Txn::CopyTxnInternals(Txn* txn) const {
   txn->writeset_ = vector<set<Key>>(this->writeset_);
   txn->reads_ = vector<map<Key, Version*>>(this->reads_);
   txn->writes_ = vector<map<Key, Version*>>(this->writes_);
+  txn->vals_ = vector<map<Key, Version*>>(this->vals_);
   txn->constraintset_ = set<Key>(this->constraintset_);
   txn->status_ = this->status_;
   txn->unique_id_ = this->unique_id_;

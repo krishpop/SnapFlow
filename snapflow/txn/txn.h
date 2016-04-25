@@ -89,7 +89,7 @@ class Txn {
   // Requires: key appears in readset or writeset
   //
   // Note: Can ONLY be called from inside the 'Execute()' function.
-  bool Read(const Key& key, Value* value, const TableType&);
+  bool Read(const Key& key, Value* value, const TableType&, const bool& val = 0);
 
   // Method to be used inside 'Execute()' function when writing records to
   // the database.
@@ -131,6 +131,8 @@ class Txn {
 
   // Key, Value pairs WRITTEN by the transaction.
   vector<map<Key, Version*>> writes_;
+
+  vector<map<Key, Version*>> vals_;
 
   set<Key> constraintset_;
 

@@ -188,6 +188,9 @@ bool MVCCStorage::Read(Key key, Version** result, uint64 txn_unique_id, const Ta
 // TODO: Change the end timestamp of old version, flip the bit, change
 // the begin timsteamp of new version and flip bit.
 void MVCCStorage::PutEndTimestamp(Version * old_version, Version * new_version, uint64 ts) {
+  if (old_version == NULL) {
+    std::cout << "HERE2" << std::endl;
+  }
   old_version->end_id_.timestamp = ts;
   new_version->begin_id_.timestamp = ts;
 
