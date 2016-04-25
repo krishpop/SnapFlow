@@ -23,3 +23,21 @@ High contention read-write (10 records)
  Snapshot   	155200		67464.5		8745.01	
 High contention mixed read only/read-write 
  Snapshot   	33709.1		5780.23		765.09	
+
+Benchmarks for Constrained Snapshot Isolation
+=============================================
+
+Average Transaction Duration
+                0.1ms           1ms             10ms
+'Low contention' WS TXNs (5 records)
+ CSI            26219.2         4197.14         541.57
+'Low contention' WS TXNs (20 records)
+ CSI            10280.1         2467.38         477.826
+'High contention' WS TXNs (20 records)
+ CSI            1715.76         563.239         91.5624
+'Low contention' WC and WS TXNs (5 records)
+ CSI            26055.5         4356.94         516.181
+'Low contention' WC and WS TXNs (20 records)
+ CSI            10636.4         2600.76         475.273
+'High contention' WC and WS TXNs (20 records)
+ CSI            3371.14         1179.26         153.077

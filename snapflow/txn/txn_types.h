@@ -414,18 +414,18 @@ class WithdrawSavings : public Txn {
       : time_(time) {
     // Make sure we can find enough unique keys.
     DCHECK(dbsize >= 2*setsize);
-
+    InitPrivateSets();
     // Find setsize unique read keys.
     for (int i = 0; i < setsize; i++) {
       Key key;
       do {
         key = rand() % dbsize;
-      } while (readset_[SAVINGS].count(key));
+      } while (readset_[CHECKING].count(key));
       // Even though it is only of the type CHECKING, we note that
       // a WC txn will use the readset_[CHECKING] to look BOTH in
       // checking and savings.
-      readset_[SAVINGS].insert(key);
-      writeset_[CHECKING].insert(key);
+      readset_[CHECKING].insert(key);
+      writeset_[SAVINGS].insert(key);
       constraintset_.insert(key);
     }
 
@@ -452,8 +452,8 @@ class WithdrawSavings : public Txn {
 
   }
 
-  WriteCheck* clone() const {             // Virtual constructor (copying)
-    WriteCheck* clone = new WriteCheck(time_);
+  WithdrawSavings* clone() const {             // Virtual constructor (copying)
+    WithdrawSavings* clone = new WithdrawSavings(time_);
     this->CopyTxnInternals(clone);
     return clone;
   }
@@ -530,7 +530,7 @@ class WithdrawSavings : public Txn {
       // We already read one result in, we need only read in from the other table
       deduct = ConstructPath(*it, result_chk, result_sav);
       Version * to_insert = new Version;
-      Write(*it, result_chk - deduct, to_insert, SAVINGS);
+      Write(*it, result_sav - deduct, to_insert, SAVINGS);
     }
   }
 
