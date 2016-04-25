@@ -13,6 +13,7 @@ string ModeToString(CCMode mode) {
   switch (mode) {
     case SI:                     return " SI       ";
     case CSI:                    return " CSI      ";
+    case MVCC:                    return " MVCC      ";
     default:                     return "INVALID MODE";
   }
 }
@@ -133,8 +134,8 @@ void Benchmark(const vector<LoadGen*>& lg) {
   deque<Txn*> doneTxns;
 
   // For each MODE...
-  for (CCMode mode = SI;
-      mode <= CSI;
+  for (CCMode mode = MVCC;
+      mode <= MVCC;
       mode = static_cast<CCMode>(mode+1)) {
     // Print out mode name.
     cout << ModeToString(mode) << flush;

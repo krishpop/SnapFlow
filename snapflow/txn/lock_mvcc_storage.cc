@@ -4,20 +4,19 @@
 
 LockMVCCStorage::~LockMVCCStorage() {
   // clear checking table
-  for (unordered_map<Key, deque<Version*>*>::iterator it = mvcc_data_[CHECKING].begin();
-       it != mvcc_data_[CHECKING].end(); ++it) {
+  for (unordered_map<Key, deque<Version*>*>::iterator it = lock_mvcc_data_[CHECKING].begin();
+       it != lock_mvcc_data_[CHECKING].end(); ++it) {
     delete it->second;
   }
 
   // clear savings table
-  for (unordered_map<Key, deque<Version*>*>::iterator it = mvcc_data_[SAVINGS].begin();
-       it != mvcc_data_[SAVINGS].end(); ++it) {
+  for (unordered_map<Key, deque<Version*>*>::iterator it = lock_mvcc_data_[SAVINGS].begin();
+       it != lock_mvcc_data_[SAVINGS].end(); ++it) {
     delete it->second;
   }
 
   // clear storage
-  mvcc_data_[CHECKING].clear();
-  mvcc_data_[SAVINGS].clear();
+  lock_mvcc_data_.clear();
 
   for (unordered_map<Key, Mutex*>::iterator it = mutexs_[CHECKING].begin();
        it != mutexs_[CHECKING].end(); ++it) {
@@ -28,15 +27,14 @@ LockMVCCStorage::~LockMVCCStorage() {
        it != mutexs_[SAVINGS].end(); ++it) {
     delete it->second;
   }
-  
-  mutexs_[CHECKING].clear();
-  mutexs_[SAVINGS].clear();
+
+  mutexs_.clear();
 
 }
 
 bool LockMVCCStorage::Read(Key key, Version** result, uint64 txn_unique_id, const TableType tbl_type, const bool& val) {
-  if (mvcc_data_[tbl_type].count(key)) {
-    deque<Version*>* data_versions_p = mvcc_data_[tbl_type][key];
+  if (lock_mvcc_data_[tbl_type].count(key)) {
+    deque<Version*>* data_versions_p = lock_mvcc_data_[tbl_type][key];
     for (deque<Version*>::iterator it = data_versions_p->begin();
          it != data_versions_p->end(); ++it) {
       if ((*it)->version_id_ < txn_unique_id){
@@ -60,8 +58,8 @@ void LockMVCCStorage::Unlock(Key key, const TableType tbl_type) {
 
 bool LockMVCCStorage::LockCheckWrite(Key key, uint64 txn_unique_id, const TableType tbl_type) {
 
-  if (mvcc_data_[tbl_type].count(key)) {
-    deque<Version*>* data_versions_p = mvcc_data_[tbl_type][key];
+  if (lock_mvcc_data_[tbl_type].count(key)) {
+    deque<Version*>* data_versions_p = lock_mvcc_data_[tbl_type][key];
 
     for (deque<Version*>::iterator it = data_versions_p->begin();
          it != data_versions_p->end(); ++it) {
@@ -78,8 +76,8 @@ bool LockMVCCStorage::LockCheckWrite(Key key, uint64 txn_unique_id, const TableT
 
 void LockMVCCStorage::FinishWrite(Key key, Version* new_version, const TableType tbl_type) {
 
-  if (mvcc_data_[tbl_type].count(key)) {
-    deque<Version*>* data_versions_p = mvcc_data_[tbl_type][key];
+  if (lock_mvcc_data_[tbl_type].count(key)) {
+    deque<Version*>* data_versions_p = lock_mvcc_data_[tbl_type][key];
 
     for (deque<Version*>::iterator it = data_versions_p->begin();
          it != data_versions_p->end(); ++it) {
@@ -97,9 +95,13 @@ void LockMVCCStorage::FinishWrite(Key key, Version* new_version, const TableType
 
 void LockMVCCStorage::InitStorage() {
   TableType tbl = CHECKING;
-  mvcc_data_.push_back(InitTable(tbl)); // Table for checking
+  unordered_map<Key, Mutex*> temp1;
+  unordered_map<Key, Mutex*> temp2;
+  mutexs_.push_back(temp1);
+  mutexs_.push_back(temp2);
+  lock_mvcc_data_.push_back(InitTable(tbl)); // Table for checking
   tbl = SAVINGS;
-  mvcc_data_.push_back(InitTable(tbl)); // Table for savings
+  lock_mvcc_data_.push_back(InitTable(tbl)); // Table for savings
 }
 
 unordered_map<Key, deque<Version*>*> LockMVCCStorage::InitTable(TableType tbl) {
@@ -117,8 +119,7 @@ unordered_map<Key, deque<Version*>*> LockMVCCStorage::InitTable(TableType tbl) {
     to_insert->end_id_ = end_ts;
     to_insert->version_id_ = 0;
     to_insert->max_read_id_ = 0;
-    Mutex* key_mutex = new Mutex();
-    mutexs_[tbl][i] = key_mutex;
+    mutexs_[tbl][i] = new Mutex();
 
     table_[i]->push_front(to_insert);
   }

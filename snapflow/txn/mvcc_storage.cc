@@ -33,19 +33,21 @@ unordered_map<Key, deque<Version*>*> MVCCStorage::InitTable() {
 // Free memory.
 MVCCStorage::~MVCCStorage() {
   // clear checking table
-  for (unordered_map<Key, deque<Version*>*>::iterator it = mvcc_data_[CHECKING].begin();
-       it != mvcc_data_[CHECKING].end(); ++it) {
-    delete it->second;
-  }
+  if (!mvcc_data_.empty()) {
+    for (unordered_map<Key, deque<Version*>*>::iterator it = mvcc_data_[CHECKING].begin();
+         it != mvcc_data_[CHECKING].end(); ++it) {
+      delete it->second;
+    }
 
-  // clear savings table
-  for (unordered_map<Key, deque<Version*>*>::iterator it = mvcc_data_[SAVINGS].begin();
-       it != mvcc_data_[SAVINGS].end(); ++it) {
-    delete it->second;
-  }
+    // clear savings table
+    for (unordered_map<Key, deque<Version*>*>::iterator it = mvcc_data_[SAVINGS].begin();
+         it != mvcc_data_[SAVINGS].end(); ++it) {
+      delete it->second;
+    }
 
-  // clear storage
-  mvcc_data_.clear();
+    // clear storage
+    mvcc_data_.clear();
+  }
 
 }
 

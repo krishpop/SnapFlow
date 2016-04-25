@@ -47,3 +47,25 @@ Average Transaction Duration
 'High contention' WC and WS TXNs (20 records)
  SI             4441.39         1384.84         174.269
  CSI            4168.88         1318.82         162.838
+
+
+Average Transaction Duration
+                0.1ms           1ms             10ms
+'High contention' WC TXNs (5 records)
+ SI             16708.7         3930.41         472.124
+ CSI            17938.3         3797.34         513.804
+'High contention' WC TXNs (20 records)
+ SI             2467.35         633.933         99.9877
+ CSI            2275.94         623.969         99.1708
+'High contention' WS TXNs (5 records)
+ SI             18546.2         3960.81         483.007
+ CSI            17558.6         3817.64         475.953
+'High contention' WS TXNs (20 records)
+ SI             2220.3          687.385         99.9288
+ CSI            2119.95         669.847         100.458
+'High contention' WC and WS TXNs (5 records)
+ SI             23519.7         4264.26         535.721
+ CSI            22541.2         4040.81         516.35
+'High contention' WC and WS TXNs (20 records)
+ SI             4233.11         1300.13         168.435
+ CSI            3817.35         1232.2          152.309

@@ -38,14 +38,14 @@ class LockMVCCStorage : public MVCCStorage {
   // Unlock the version_list of key
   void Unlock(Key key, const TableType tbl_type);
 
-  ~LockMVCCStorage();
+  virtual ~LockMVCCStorage();
 
  private:
 
   friend class TxnProcessor;
 
   // Storage for MVCC, each key has a linklist of versions
-  vector<unordered_map<Key, deque<Version*>*>> mvcc_data_;
+  vector<unordered_map<Key, deque<Version*>*>> lock_mvcc_data_;
 
   // Mutexs for each key
   vector<unordered_map<Key, Mutex*>> mutexs_;
