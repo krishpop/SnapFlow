@@ -403,7 +403,7 @@ class WriteCheck : public Txn {
   vector<bool> path_;
   // For WriteCheck txns, constraint_ is the upper bound on how much
   // money the customer must have for the txn to not penalize him/her.
-  Value constraint_ = 0;
+  Value constraint_ = 5;
 };
 
 // WithdrawSavings txns to deal with write-skew (used by a Checking/Savings system)
@@ -581,7 +581,7 @@ class WithdrawSavings : public Txn {
   vector<bool> path_;
   // For WriteCheck txns, constraint_ is the upper bound on how much
   // money the customer must have for the txn to not penalize him/her.
-  Value constraint_ = 0;
+  Value constraint_ = 5;
 };
 
 #endif  // _TXN_TYPES_H_

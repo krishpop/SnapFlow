@@ -40,7 +40,7 @@ class MVCCStorage {
   virtual void InitStorage();
 
   // Init table
-  virtual unordered_map<Key, deque<Version*>*> InitTable();
+  virtual unordered_map<Key, deque<Version*>*> InitTable(TableType tbl);
 
   // Lock the version_list of key
   virtual void Lock(Key key, TableType tbl_type){};

@@ -5,21 +5,29 @@
 
 // Init the storage
 void MVCCStorage::InitStorage() {
-  mvcc_data_.push_back(InitTable()); // Table for checking
-  mvcc_data_.push_back(InitTable()); // Table for savings
+  TableType tbl = CHECKING;
+  mvcc_data_.push_back(InitTable(tbl)); // Table for checking
+  tbl = SAVINGS;
+  mvcc_data_.push_back(InitTable(tbl)); // Table for savings
 }
 
 // Init the table
-unordered_map<Key, deque<Version*>*> MVCCStorage::InitTable() {
+unordered_map<Key, deque<Version*>*> MVCCStorage::InitTable(TableType tbl) {
   unordered_map<Key, deque<Version*>*> table_;
 
   // TODO: set to 1000000
-  for (int i = 0; i < 100; ++i) {
+  for (int i = 0; i < 1000000; ++i) {
     table_[i] = new deque<Version*>();
     Timestamp begin_ts = Timestamp{ 0, NULL, 0};
     Timestamp end_ts = Timestamp{ INF_INT, NULL, 0};
 
     Version* to_insert = new Version;
+    if (tbl == SAVINGS) {
+      to_insert->value_ = 5;
+    }
+    else {
+      to_insert->value_ = 0;
+    }
     to_insert->value_ = 0;
     to_insert->begin_id_ = begin_ts;
     to_insert->end_id_ = end_ts;

@@ -13,7 +13,7 @@ string ModeToString(CCMode mode) {
   switch (mode) {
     case SI:                     return " SI       ";
     case CSI:                    return " CSI      ";
-    case MVCC:                    return " MVCC      ";
+    case MVCC:                   return " MVCC      ";
     default:                     return "INVALID MODE";
   }
 }
@@ -134,7 +134,7 @@ void Benchmark(const vector<LoadGen*>& lg) {
   deque<Txn*> doneTxns;
 
   // For each MODE...
-  for (CCMode mode = MVCC;
+  for (CCMode mode = SI;
       mode <= MVCC;
       mode = static_cast<CCMode>(mode+1)) {
     // Print out mode name.
@@ -326,78 +326,78 @@ int main(int argc, char** argv) {
   // lg.push_back(new WriteSkewLoadGen(1000000, 5, 0.0001));
   // lg.push_back(new WriteSkewLoadGen(1000000, 5, 0.001));
   // lg.push_back(new WriteSkewLoadGen(1000000, 5, 0.01));
-  //
+  
   // Benchmark(lg);
-  //
+  
   // for (uint32 i = 0; i < lg.size(); i++)
   //   delete lg[i];
   // lg.clear();
-  //
+  
   // cout << "'Low contention' WC and WS TXNs (20 records)" << endl;
   // lg.push_back(new WriteSkewLoadGen(1000000, 20, 0.0001));
   // lg.push_back(new WriteSkewLoadGen(1000000, 20, 0.001));
   // lg.push_back(new WriteSkewLoadGen(1000000, 20, 0.01));
-  //
+  
   // Benchmark(lg);
-  //
+  
   // for (uint32 i = 0; i < lg.size(); i++)
   //   delete lg[i];
   // lg.clear();
 
-  cout << "'High contention' WC TXNs (5 records)" << endl;
-  lg.push_back(new WCLoadGen(100, 5, 0.0001));
-  lg.push_back(new WCLoadGen(100, 5, 0.001));
-  lg.push_back(new WCLoadGen(100, 5, 0.01));
+  // cout << "'High contention' WC TXNs (5 records)" << endl;
+  // lg.push_back(new WCLoadGen(100, 5, 0.0001));
+  // lg.push_back(new WCLoadGen(100, 5, 0.001));
+  // lg.push_back(new WCLoadGen(100, 5, 0.01));
 
-  Benchmark(lg);
+  // Benchmark(lg);
 
-  for (uint32 i = 0; i < lg.size(); i++)
-    delete lg[i];
-  lg.clear();
+  // for (uint32 i = 0; i < lg.size(); i++)
+  //   delete lg[i];
+  // lg.clear();
 
-  cout << "'High contention' WC TXNs (20 records)" << endl;
-  lg.push_back(new WCLoadGen(100, 20, 0.0001));
-  lg.push_back(new WCLoadGen(100, 20, 0.001));
-  lg.push_back(new WCLoadGen(100, 20, 0.01));
+  // cout << "'High contention' WC TXNs (20 records)" << endl;
+  // lg.push_back(new WCLoadGen(100, 20, 0.0001));
+  // lg.push_back(new WCLoadGen(100, 20, 0.001));
+  // lg.push_back(new WCLoadGen(100, 20, 0.01));
 
-  Benchmark(lg);
+  // Benchmark(lg);
 
-  for (uint32 i = 0; i < lg.size(); i++)
-    delete lg[i];
-  lg.clear();
+  // for (uint32 i = 0; i < lg.size(); i++)
+  //   delete lg[i];
+  // lg.clear();
 
-  cout << "'High contention' WS TXNs (5 records)" << endl;
-  lg.push_back(new WSLoadGen(100, 5, 0.0001));
-  lg.push_back(new WSLoadGen(100, 5, 0.001));
-  lg.push_back(new WSLoadGen(100, 5, 0.01));
+  // cout << "'High contention' WS TXNs (5 records)" << endl;
+  // lg.push_back(new WSLoadGen(100, 5, 0.0001));
+  // lg.push_back(new WSLoadGen(100, 5, 0.001));
+  // lg.push_back(new WSLoadGen(100, 5, 0.01));
 
-  Benchmark(lg);
+  // Benchmark(lg);
 
-  for (uint32 i = 0; i < lg.size(); i++)
-    delete lg[i];
-  lg.clear();
+  // for (uint32 i = 0; i < lg.size(); i++)
+  //   delete lg[i];
+  // lg.clear();
 
-  cout << "'High contention' WS TXNs (20 records)" << endl;
-  lg.push_back(new WSLoadGen(100, 20, 0.0001));
-  lg.push_back(new WSLoadGen(100, 20, 0.001));
-  lg.push_back(new WSLoadGen(100, 20, 0.01));
+  // cout << "'High contention' WS TXNs (20 records)" << endl;
+  // lg.push_back(new WSLoadGen(100, 20, 0.0001));
+  // lg.push_back(new WSLoadGen(100, 20, 0.001));
+  // lg.push_back(new WSLoadGen(100, 20, 0.01));
 
-  Benchmark(lg);
+  // Benchmark(lg);
 
-  for (uint32 i = 0; i < lg.size(); i++)
-    delete lg[i];
-  lg.clear();
+  // for (uint32 i = 0; i < lg.size(); i++)
+  //   delete lg[i];
+  // lg.clear();
 
-  cout << "'High contention' WC and WS TXNs (5 records)" << endl;
-  lg.push_back(new WriteSkewLoadGen(100, 5, 0.0001));
-  lg.push_back(new WriteSkewLoadGen(100, 5, 0.001));
-  lg.push_back(new WriteSkewLoadGen(100, 5, 0.01));
+  // cout << "'High contention' WC and WS TXNs (5 records)" << endl;
+  // lg.push_back(new WriteSkewLoadGen(100, 5, 0.0001));
+  // lg.push_back(new WriteSkewLoadGen(100, 5, 0.001));
+  // lg.push_back(new WriteSkewLoadGen(100, 5, 0.01));
 
-  Benchmark(lg);
+  // Benchmark(lg);
 
-  for (uint32 i = 0; i < lg.size(); i++)
-    delete lg[i];
-  lg.clear();
+  // for (uint32 i = 0; i < lg.size(); i++)
+  //   delete lg[i];
+  // lg.clear();
 
   cout << "'High contention' WC and WS TXNs (20 records)" << endl;
   lg.push_back(new WriteSkewLoadGen(100, 20, 0.0001));
