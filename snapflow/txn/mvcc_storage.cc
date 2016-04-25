@@ -13,7 +13,8 @@ void MVCCStorage::InitStorage() {
 unordered_map<Key, deque<Version*>*> MVCCStorage::InitTable() {
   unordered_map<Key, deque<Version*>*> table_;
 
-  for (int i = 0; i < 1000000;i++) {
+  // TODO: set to 1000000
+  for (int i = 0; i < 100; ++i) {
     table_[i] = new deque<Version*>();
     Timestamp begin_ts = Timestamp{ 0, NULL, 0};
     Timestamp end_ts = Timestamp{ INF_INT, NULL, 0};
@@ -76,9 +77,9 @@ uint64 MVCCStorage::GetBeginTimestamp(Version * v, uint64 my_id, Timestamp & ts,
   // This requires that the txn keeps its pointer in the Txn field of the TS
   ts.mutex_.Lock();
   Txn * txn_p = (Txn*) ts.txn;
-  ts.mutex_.Unlock();
   int status = txn_p->Status();
   uint64 id = txn_p->GetStartID();
+  ts.mutex_.Unlock();
 
   if (status == ACTIVE) {
     if (id == my_id && v->end_id_.timestamp == INF_INT && !val) {
@@ -114,12 +115,12 @@ uint64 MVCCStorage::GetEndTimestamp(Version * v, uint64 my_id, Timestamp & ts, c
   // This requires that the txn keeps its pointer in the Txn field of the TS
   ts.mutex_.Lock();
   Txn * txn_p = (Txn*) ts.txn;
-  ts.mutex_.Unlock();
 
   TxnStatus status = txn_p->Status();
+  ts.mutex_.Unlock();
 
   if (status == ACTIVE) {
-      return INF_INT;      
+      return INF_INT;
   }
   else if (status == COMMITTED) {
     return txn_p->GetEndID();
@@ -130,7 +131,6 @@ uint64 MVCCStorage::GetEndTimestamp(Version * v, uint64 my_id, Timestamp & ts, c
   return INF_INT;
 
 }
-
 
 bool MVCCStorage::Read(Key key, Version** result, uint64 txn_unique_id, const TableType tbl_type, const bool& val) {
   if (mvcc_data_[tbl_type].count(key)) {
@@ -164,12 +164,15 @@ bool MVCCStorage::Read(Key key, Version** result, uint64 txn_unique_id, const Ta
         }
       }
 
-
       // At the end, check using the timestamps found above:
       if ((begin_ts <= txn_unique_id) && (end_ts > txn_unique_id)) {
         right_version = (*it);
         break;
       }
+      // else if ((*it)->begin_id_.timestamp == 0) {
+      //   Version *current_version = *it;
+      //   std::cout << "begin_id timestamp is 0" << std::endl;
+      // }
     }
     if (right_version == NULL) {
       return false;
@@ -179,10 +182,8 @@ bool MVCCStorage::Read(Key key, Version** result, uint64 txn_unique_id, const Ta
       return true;
     }
   }
-  else {
-    return false;
-  }
-  return true;
+
+  return false;
 }
 
 // TODO: Change the end timestamp of old version, flip the bit, change

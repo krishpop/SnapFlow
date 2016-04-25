@@ -11,6 +11,7 @@
 
 #include "txn/common.h"
 #include "txn/mvcc_storage.h"
+#include "txn/lock_mvcc_storage.h"
 #include "txn/txn.h"
 #include "utils/atomic.h"
 #include "utils/static_thread_pool.h"
@@ -24,7 +25,8 @@ using std::string;
 
 enum CCMode {
   SI = 0,                  // Snapshot isolation (by Larson)
-  CSI = 1                // Our new control flow algo
+  CSI = 1,                 // Constraint snapshot isolation
+  MVCC = 2                 // MVCC locking
 };
 
 
@@ -57,6 +59,23 @@ class TxnProcessor {
 
  private:
 
+  // NORMAL MVCC FUNCS
+  bool MVCCCheckWrites(Txn* txn);
+
+  void MVCCLockWriteKeys(Txn* txn);
+
+  void MVCCUnlockWriteKeys(Txn* txn);
+
+  void MVCCPerformReads(Txn* txn);
+
+  void MVCCFinishWrites(Txn* txn);
+
+  void MVCCExecuteTxn(Txn* txn);
+
+  void RunMVCCScheduler();
+
+  /// END - NORMAL MVCC FUNCS
+
   // Performs all reads required to execute the transaction, then executes the
   // transaction logic.
   void ExecuteTxn(Txn* txn);
@@ -73,7 +92,7 @@ class TxnProcessor {
 
   void GetEndTimestamp(Txn* txn, const bool& val = true);
 
-  void GetReads(Txn* txn);
+  bool GetReads(Txn* txn);
 
   void GetValidationReads(Txn* txn);
 
@@ -107,7 +126,7 @@ class TxnProcessor {
   MVCCStorage* storage_;
 
   // Next valid unique_id, and a mutex to guard incoming txn requests.
-  int next_unique_id_;
+  int next_unique_id_ = 1;
   Mutex mutex_;
 
   // Queue of incoming transaction requests.

@@ -4,7 +4,7 @@ OBJDIRS += txn
 UPPERC_DIR := TXN
 LOWERC_DIR := txn
 
-TXN_SRCS := txn/mvcc_storage.cc txn/txn.cc txn/txn_processor.cc
+TXN_SRCS := txn/mvcc_storage.cc txn/lock_mvcc_storage.cc txn/txn.cc txn/txn_processor.cc
 
 SRC_LINKED_OBJECTS :=
 TEST_LINKED_OBJECTS :=

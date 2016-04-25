@@ -24,26 +24,29 @@ class MVCCStorage {
   // If there exists a record for the specified key, sets '*result' equal to
   // the value associated with the key and returns true, else returns false;
   // The third parameter is the txn_unique_id(txn timestamp), which is used for MVCC.
-  bool Read(Key key, Version** result, uint64 txn_unique_id = 0, TableType tbl_type = CHECKING, const bool& val = 0);
+  virtual bool Read(Key key, Version** result, uint64 txn_unique_id = 0, TableType tbl_type = CHECKING, const bool& val = 0);
 
   // Check whether apply or abort the write
   bool CheckWrite(Key key, Version* read_version, Txn* current_txn, TableType tbl_type = CHECKING);
 
+  // Check whether apply or abort the write
+  virtual bool LockCheckWrite(Key key, uint64 txn_unique_id, TableType tbl_type = CHECKING) { return true; }
+
   // Inserts a new version with key and value
   // The third parameter is the txn_unique_id(txn timestamp), which is used for MVCC.
-  void FinishWrite(Key key, Version* new_version, TableType tbl_type = CHECKING);
+  virtual void FinishWrite(Key key, Version* new_version, TableType tbl_type = CHECKING);
 
   // Init storage of multiple tables
-  void InitStorage();
+  virtual void InitStorage();
 
   // Init table
-  unordered_map<Key, deque<Version*>*> InitTable();
+  virtual unordered_map<Key, deque<Version*>*> InitTable();
 
   // Lock the version_list of key
-  void Lock(Key key);
+  virtual void Lock(Key key, TableType tbl_type){};
 
   // Unlock the version_list of key
-  void Unlock(Key key);
+  virtual void Unlock(Key key, TableType tbl_type){};
 
   // Get the start timestamp for a version and transaction id
   uint64 GetBeginTimestamp(Version * v, uint64 my_id, Timestamp&, const bool& val = 0);
@@ -54,7 +57,7 @@ class MVCCStorage {
   // Put end timestamps into versions in storage
   void PutEndTimestamp(Version *, Version *, uint64);
 
-  ~MVCCStorage();
+  virtual ~MVCCStorage();
 
  private:
 

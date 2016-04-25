@@ -13,11 +13,14 @@
 TxnProcessor::TxnProcessor(CCMode mode)
     : mode_(mode), tp_(THREAD_COUNT), next_unique_id_(1) {
 
+  if (mode_ == MVCC) {
+    storage_ = new LockMVCCStorage();
+  }
+  else {
+    storage_ = new MVCCStorage();
+  }
 
-
-  storage_ = new MVCCStorage();
   storage_->InitStorage();
-
   // Start 'RunScheduler()' running.
   cpu_set_t cpuset;
   pthread_attr_t attr;
@@ -66,10 +69,161 @@ void TxnProcessor::RunScheduler() {
   switch (mode_) {
     case SI:                 RunSnapshotScheduler();
     case CSI:                RunCSIScheduler();
+    case MVCC:               RunMVCCScheduler();
   }
 }
 
-/////////////////////// START OF SNAPSHOT EXECUTION ///////////////////////////
+//////////////////////// NORMAL MVCC /////////////////////////////////////////
+
+bool TxnProcessor::MVCCCheckWrites(Txn* txn) {
+    //   Call MVCCStorage::CheckWrite method to check all keys in the write_set_
+  for (set<Key>::iterator it = txn->writeset_[CHECKING].begin();
+       it != txn->writeset_[CHECKING].end(); ++it) {
+    if (!storage_->LockCheckWrite(*it, txn->unique_id_, CHECKING)) {
+      return false;
+    }
+  }
+
+  for (set<Key>::iterator it = txn->writeset_[SAVINGS].begin();
+       it != txn->writeset_[SAVINGS].end(); ++it) {
+    if (!storage_->LockCheckWrite(*it, txn->unique_id_, SAVINGS)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+void TxnProcessor::MVCCLockWriteKeys(Txn* txn) {
+  //   Acquire all locks for keys in the write_set_
+  for (set<Key>::iterator it = txn->writeset_[CHECKING].begin();
+             it != txn->writeset_[CHECKING].end(); ++it) {
+    storage_->Lock(*it, CHECKING);
+  }
+  for (set<Key>::iterator it = txn->writeset_[SAVINGS].begin();
+             it != txn->writeset_[SAVINGS].end(); ++it) {
+    storage_->Lock(*it, SAVINGS);
+  }
+}
+
+void TxnProcessor::MVCCUnlockWriteKeys(Txn* txn) {
+    //   Acquire all locks for keys in the write_set_
+  for (set<Key>::iterator it = txn->writeset_[CHECKING].begin();
+             it != txn->writeset_[CHECKING].end(); ++it) {
+    storage_->Unlock(*it, CHECKING);
+  }
+  for (set<Key>::iterator it = txn->writeset_[SAVINGS].begin();
+             it != txn->writeset_[SAVINGS].end(); ++it) {
+    storage_->Unlock(*it, SAVINGS);
+  }
+}
+
+void TxnProcessor::MVCCPerformReads(Txn* txn) {
+  for (set<Key>::iterator it = txn->readset_[CHECKING].begin();
+       it != txn->readset_[CHECKING].end(); ++it) {
+
+    storage_->Lock(*it, CHECKING);
+    Version * result = NULL;
+    if (storage_->Read(*it, &result, txn->unique_id_, CHECKING))
+      txn->reads_[CHECKING][*it] = result;
+    storage_->Unlock(*it, CHECKING);
+  }
+
+  for (set<Key>::iterator it = txn->readset_[SAVINGS].begin();
+       it != txn->readset_[SAVINGS].end(); ++it) {
+
+    storage_->Lock(*it, SAVINGS);
+    Version * result = NULL;
+    if (storage_->Read(*it, &result, txn->unique_id_, SAVINGS))
+      txn->reads_[SAVINGS][*it] = result;
+    storage_->Unlock(*it, SAVINGS);
+  }
+
+  for (set<Key>::iterator it = txn->writeset_[CHECKING].begin();
+       it != txn->writeset_[CHECKING].end(); ++it) {
+
+    storage_->Lock(*it, CHECKING);
+    Version * result = NULL;
+    if (storage_->Read(*it, &result, txn->unique_id_, CHECKING))
+      txn->reads_[CHECKING][*it] = result;
+    storage_->Unlock(*it, CHECKING);
+  }
+
+  for (set<Key>::iterator it = txn->writeset_[SAVINGS].begin();
+       it != txn->writeset_[SAVINGS].end(); ++it) {
+
+    storage_->Lock(*it, SAVINGS);
+    Version * result = NULL;
+    if (storage_->Read(*it, &result, txn->unique_id_, SAVINGS))
+      txn->reads_[SAVINGS][*it] = result;
+    storage_->Unlock(*it, SAVINGS);
+  }
+}
+
+void TxnProcessor::MVCCFinishWrites(Txn* txn) {
+  for (map<Key, Version*>::iterator it = txn->writes_[CHECKING].begin();
+       it != txn->writes_[CHECKING].end(); ++it) {
+    storage_->FinishWrite(it->first, it->second, CHECKING);
+  }
+
+  for (map<Key, Version*>::iterator it = txn->writes_[SAVINGS].begin();
+       it != txn->writes_[SAVINGS].end(); ++it) {
+    storage_->FinishWrite(it->first, it->second, SAVINGS);
+  }
+}
+
+void TxnProcessor::MVCCExecuteTxn(Txn* txn) {
+
+  GetBeginTimestamp(txn);
+
+  //   Read all necessary data for this transaction from storage (Note that you should lock the key before each read)
+  MVCCPerformReads(txn);
+
+  //   Execute the transaction logic (i.e. call Run() on the transaction)
+  txn->Run();
+
+  // get all write locks
+  MVCCLockWriteKeys(txn);
+
+  bool good_writes = MVCCCheckWrites(txn);
+
+  if (good_writes) {
+    MVCCFinishWrites(txn);
+    MVCCUnlockWriteKeys(txn);
+
+    // Mark txn as committed
+    txn->status_ = COMMITTED;
+    txn_results_.Push(txn);
+
+  } else {
+    MVCCUnlockWriteKeys(txn);
+
+    EmptyReadWrites(txn);
+    txn->status_ = ABORTED;
+    Txn* copy = txn->clone();
+    copy->status_ = INCOMPLETE;
+    txn_requests_.Push(copy);
+
+  }
+
+
+}
+
+void TxnProcessor::RunMVCCScheduler() {
+  Txn* txn;
+
+  while (tp_.Active()) {
+    if (txn_requests_.Pop(&txn)) {
+      tp_.RunTask(new Method<TxnProcessor, void, Txn*>(
+            this,
+            &TxnProcessor::MVCCExecuteTxn,
+            txn));
+    }
+  }
+}
+
+/////////////////////////// END OF NORMAL MVCC ///////////////////////////////
+
+/////////////////////// START OF SI AND CSI EXECUTION ///////////////////////////
 
 void TxnProcessor::GetBeginTimestamp(Txn* txn) {
 
@@ -92,7 +246,7 @@ void TxnProcessor::GetEndTimestamp(Txn* txn, const bool& val) {
   mutex_.Unlock();
 }
 
-void TxnProcessor::GetReads(Txn* txn) {
+bool TxnProcessor::GetReads(Txn* txn) {
 
   for (set<Key>::iterator it = txn->readset_[CHECKING].begin();
      it != txn->readset_[CHECKING].end(); ++it) {
@@ -100,6 +254,9 @@ void TxnProcessor::GetReads(Txn* txn) {
     Version * result = NULL;
     if (storage_->Read(*it, &result, txn->unique_id_, CHECKING)) {
       txn->reads_[CHECKING][*it] = result;
+    }
+    else {
+      return false;
     }
   }
 
@@ -110,8 +267,11 @@ void TxnProcessor::GetReads(Txn* txn) {
     if (storage_->Read(*it, &result, txn->unique_id_, SAVINGS)) {
       txn->reads_[SAVINGS][*it] = result;
     }
+    else {
+      return false;
+    }
   }
-
+  return true;
 }
 
 void TxnProcessor::GetValidationReads(Txn* txn) {
@@ -120,9 +280,6 @@ void TxnProcessor::GetValidationReads(Txn* txn) {
 
     Version * result = NULL;
     if (storage_->Read(*it, &result, txn->end_unique_id_, CHECKING, true)) {
-      if (!result) {
-        std::cout << "FUCK THIS" << std::endl;
-      }
       txn->vals_[CHECKING][*it] = result;
     }
     result = NULL;
@@ -146,6 +303,11 @@ bool TxnProcessor::CheckWrites(Txn* txn) {
         return false;
       }
     }
+    else {
+      // std::cout << "Did not find valid version for key: " << *it << std::endl;
+      // storage_->Read(*it, &result, txn->unique_id_, CHECKING);
+      return false;
+    }
   }
 
   for (set<Key>::iterator it = txn->writeset_[SAVINGS].begin();
@@ -158,6 +320,9 @@ bool TxnProcessor::CheckWrites(Txn* txn) {
       if (!storage_->CheckWrite(*it, result, txn, SAVINGS)) {
         return false;
       }
+    }
+    else {
+      return false;
     }
   }
   return true;
@@ -222,14 +387,15 @@ void TxnProcessor::CSIExecuteTxn(Txn* txn) {
   GetBeginTimestamp(txn);
 
   // Normal execution stage
-  GetReads(txn);
-
-  if (!CheckWrites(txn)) {
+  // For all transactions that reach end of version deque
+  // and do not get valid version to read, abort it
+  // OR if
+  if (!GetReads(txn) || !CheckWrites(txn)) {
     EmptyReadWrites(txn);
     Txn* copy = txn->clone();
     copy->status_ = INCOMPLETE;
     txn->status_ = ABORTED;
-    
+
     // Copy txn
     txn_requests_.Push(copy);
     return;
@@ -249,7 +415,7 @@ void TxnProcessor::CSIExecuteTxn(Txn* txn) {
 
   FinishWrites(txn);
   GetEndTimestamp(txn);
-  GetValidationReads(txn); // Should not do this now. This overwrites reads_
+  GetValidationReads(txn);
 
   if (txn->Validate()) {
     txn->status_ = COMMITTED;
@@ -259,7 +425,7 @@ void TxnProcessor::CSIExecuteTxn(Txn* txn) {
     Txn* copy = txn->clone();
     copy->status_ = INCOMPLETE;
     txn->status_ = ABORTED;
-    
+
     // Copy txn
     txn_requests_.Push(copy);
     return;
@@ -276,9 +442,7 @@ void TxnProcessor::SnapshotExecuteTxn(Txn* txn) {
 
   GetBeginTimestamp(txn);
 
-  GetReads(txn);
-
-  if (!CheckWrites(txn)) {
+  if (!GetReads(txn) || !CheckWrites(txn)) {
     EmptyReadWrites(txn);
     Txn* copy = txn->clone();
     copy->status_ = INCOMPLETE;
@@ -287,7 +451,7 @@ void TxnProcessor::SnapshotExecuteTxn(Txn* txn) {
     txn_requests_.Push(copy);
     return;
   }
-    
+
   if (txn->Status() == ACTIVE) {
     txn->Run();
     if (txn->Status() != ABORTED) {
@@ -297,10 +461,10 @@ void TxnProcessor::SnapshotExecuteTxn(Txn* txn) {
     }
     // If it's aborted here, it is a permanent abort
     else {
-      
+
       EmptyReadWrites(txn);
       txn_results_.Push(txn);
-      
+
     }
   }
 
@@ -309,7 +473,6 @@ void TxnProcessor::SnapshotExecuteTxn(Txn* txn) {
     txn_results_.Push(txn);
   }
 }
-
 
 void TxnProcessor::RunSnapshotScheduler() {
   Txn* txn;
@@ -323,8 +486,6 @@ void TxnProcessor::RunSnapshotScheduler() {
   }
 }
 
-/////////////////////// END OF CONSTRAINT SNAPSHOT EXECUTION /////////////////////////////
-
 void TxnProcessor::RunCSIScheduler() {
   Txn* txn;
   while (tp_.Active()) {
@@ -336,3 +497,5 @@ void TxnProcessor::RunCSIScheduler() {
     }
   }
 }
+
+/////////////////////// END OF SI AND CSI EXECUTION /////////////////////////////

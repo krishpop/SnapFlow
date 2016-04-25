@@ -4,40 +4,46 @@ Benchmarks for Snapshot Isolation
 Average Transaction Duration
 		0.1ms		1ms		10ms
 'Low contention' Read only (5 records)
- Snapshot   	43336.7		5619.59		609.133	
-'Low contention' Read only (20 records) 
- Snapshot   	31651.9		5415.69		572.053	
+ Snapshot   	43336.7		5619.59		609.133
+'Low contention' Read only (20 records)
+ Snapshot   	31651.9		5415.69		572.053
 'High contention' Read only (5 records)
- Snapshot   	43326.4		5639.42		618.228	
+ Snapshot   	43326.4		5639.42		618.228
 'High contention' Read only (20 records)
- Snapshot   	33667.3		5286.51		599.105	
+ Snapshot   	33667.3		5286.51		599.105
 Low contention read-write (5 records)
- Snapshot   	34889.2		4936.11		561.722	
+ Snapshot   	34889.2		4936.11		561.722
 Low contention read-write (10 records)
- Snapshot   	26638.8		4036.34		540.555	
+ Snapshot   	26638.8		4036.34		540.555
 High contention read-write (1 records)
- Snapshot   	125953		25169.6		2793.07	
+ Snapshot   	125953		25169.6		2793.07
 High contention read-write (5 records)
- Snapshot   	101466		17782.2		2662.7	
+ Snapshot   	101466		17782.2		2662.7
 High contention read-write (10 records)
- Snapshot   	155200		67464.5		8745.01	
-High contention mixed read only/read-write 
- Snapshot   	33709.1		5780.23		765.09	
+ Snapshot   	155200		67464.5		8745.01
+High contention mixed read only/read-write
+ Snapshot   	33709.1		5780.23		765.09
 
 Benchmarks for Constrained Snapshot Isolation
 =============================================
 
 Average Transaction Duration
                 0.1ms           1ms             10ms
-'Low contention' WS TXNs (5 records)
- CSI            26219.2         4197.14         541.57
-'Low contention' WS TXNs (20 records)
- CSI            10280.1         2467.38         477.826
+'High contention' WC TXNs (5 records)
+ SI             18770.8         3750.21         486.515
+ CSI            16494.2         3676.89         467.273
+'High contention' WC TXNs (20 records)
+ SI             2246.64         692.109         100.098
+ CSI            2314.89         654.902         99.1684
+'High contention' WS TXNs (5 records)
+ SI             18520.9         3787.68         481.594
+ CSI            17746.3         3791.91         423.636
 'High contention' WS TXNs (20 records)
- CSI            1715.76         563.239         91.5624
-'Low contention' WC and WS TXNs (5 records)
- CSI            26055.5         4356.94         516.181
-'Low contention' WC and WS TXNs (20 records)
- CSI            10636.4         2600.76         475.273
+ SI             2457.75         678.068         99.9663
+ CSI            2374.33         686.346         99.0428
+'High contention' WC and WS TXNs (5 records)
+ SI             24815.3         4056.45         537.265
+ CSI            22335.3         3987.93         517.199
 'High contention' WC and WS TXNs (20 records)
- CSI            3371.14         1179.26         153.077
+ SI             4441.39         1384.84         174.269
+ CSI            4168.88         1318.82         162.838

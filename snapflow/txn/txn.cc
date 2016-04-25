@@ -26,7 +26,7 @@ bool Txn::Read(const Key& key, Value * value, const TableType& table, const bool
   else if (reads_[table].count(key)) {
     *value = reads_[table][key]->value_;
     return true;
-  } 
+  }
   else {
     return false;
   }
@@ -41,12 +41,16 @@ void Txn::Write(const Key& key, const Value& value, Version * to_insert, const T
   if (status_ != INCOMPLETE && status_ != ACTIVE)
     return;
 
-  Timestamp begin_ts = Timestamp{0, this, 1};
+  Timestamp begin_ts = Timestamp{INF_INT, this, 1}; // TODO: Figure out if this should be INF_INT or 0
   Timestamp end_ts = Timestamp{INF_INT, NULL, 0};
 
   to_insert->value_ = value;
   to_insert->begin_id_ = begin_ts;
   to_insert->end_id_ = end_ts;
+
+  // version_id_ and max_read_id_ for LockMVCCStorage
+  to_insert->version_id_ = unique_id_;
+  to_insert->max_read_id_ = 0;
   // Set key-value pair in write buffer.
   writes_[table][key] = to_insert;
 

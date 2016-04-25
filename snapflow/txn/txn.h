@@ -37,6 +37,8 @@ struct Timestamp {
 // MVCC 'version' structure
 struct Version {
   Value value_;      // The value of this version
+  uint64 version_id_; // Used by LockMVCCStorage
+  uint64 max_read_id_; // Used by LockMVCCStorage
   Timestamp begin_id_; // The timestamp of the earliest possible transaction to read/write this version
   Timestamp end_id_; // Timestamp of the latest possible transaction to read/write this version
 };
