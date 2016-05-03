@@ -322,6 +322,19 @@ int main(int argc, char** argv) {
   /*
     CSI tests
   */
+
+  // cout << "'Low contention' WC and WS TXNs (5 records)" << endl;
+  // lg.push_back(new WCLoadGen(1000000, 5, 0.0001));
+  // lg.push_back(new WCLoadGen(1000000, 5, 0.001));
+  // lg.push_back(new WCLoadGen(1000000, 5, 0.01));
+  
+  // Benchmark(lg);
+  
+  // for (uint32 i = 0; i < lg.size(); i++)
+  //   delete lg[i];
+  // lg.clear();
+
+
   // cout << "'Low contention' WC and WS TXNs (5 records)" << endl;
   // lg.push_back(new WriteSkewLoadGen(1000000, 5, 0.0001));
   // lg.push_back(new WriteSkewLoadGen(1000000, 5, 0.001));
